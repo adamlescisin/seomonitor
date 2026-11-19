@@ -137,6 +137,7 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 .menu summary::after{content:"";width:7px;height:7px;border-right:1.6px solid var(--muted);border-bottom:1.6px solid var(--muted);transform:rotate(45deg) translate(-2px,-2px);margin-left:4px}
 .pop{position:absolute;right:0;top:calc(100% + 6px);background:var(--surface);border:1px solid var(--ring);border-radius:12px;padding:6px;min-width:250px;display:flex;flex-direction:column;z-index:30;box-shadow:0 12px 36px rgba(0,0,0,.18)}
 .pop button{text-align:left;border:0;background:transparent;padding:9px 12px;border-radius:8px;font:inherit;font-size:13px;color:var(--ink);cursor:pointer}.pop button:hover{background:var(--wash)}
+.pop hr{border:0;border-top:1px solid var(--ring);margin:4px 2px;width:100%}
 .hb{grid-template-columns:minmax(90px,40%) 1fr auto!important}
 </style>
 </head>
@@ -149,7 +150,7 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
     <span class="spacer"></span>
     <span class="job" id="jobmsg"></span>
     <details class="menu" id="admin-btns" style="display:none"><summary class="btn" id="b-menu"></summary>
-      <div class="pop"><button id="b-sync"></button><button id="b-crawl"></button><button id="b-ideas"></button></div></details>
+      <div class="pop"><button id="b-sync"></button><button id="b-crawl"></button><button id="b-ideas"></button><hr><button id="b-restart"></button></div></details>
     <div class="seg langseg" id="langs"><button data-k="cs">CZ</button><button data-k="en">EN</button></div>
     <button class="btn icon" id="theme" aria-label="Theme"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="6"/><path d="M8 2a6 6 0 0 1 0 12z" fill="currentColor"/></svg></button>
     <span class="who" id="who"></span>
@@ -174,7 +175,7 @@ const I18N = {
 cs:{
  nav_overview:'Přehled',nav_queries:'Klíčová slova',nav_pages:'Stránky',nav_opps:'Příležitosti',nav_audit:'Technický audit',nav_ai:'AI / GEO',nav_ideas:'Nápady na klíčová slova',nav_settings:'Nastavení',
  r7:'7 dní',r28:'28 dní',r90:'3 měs.',r180:'6 měs.',r365:'12 měs.',
- b_menu:'Aktualizace dat',b_sync:'Synchronizovat data',b_crawl:'Spustit audit',b_ideas:'Obnovit nápady',logout:'Odhlásit',
+ b_menu:'Aktualizace dat',b_restart:'Restartovat aplikaci a načíst konfiguraci',tip_restart:'Znovu načte config.yaml (např. po přidání webu) a obnoví stránku',restart_confirm:'Restartovat aplikaci? Potrvá to několik sekund.',restart_busy:'Probíhá úloha (synchronizace/audit). Počkejte, až skončí.',restart_wait:'Restartuji…',restart_fail:'Aplikace se po restartu nepodařilo znovu spustit. Zkontrolujte /tmp/seocompass-server.log (možná chyba v config.yaml).',b_sync:'Synchronizovat data',b_crawl:'Spustit audit',b_ideas:'Obnovit nápady',logout:'Odhlásit',
  tip_sync:'Stáhne data ze Search Console a GA4',tip_crawl:'Projde web a zkontroluje technické problémy',tip_ideas:'Obnoví nápady na klíčová slova',
  demo:'Ukázková data (demo). Po připojení Googlu spusťte <code>./run.sh</code> bez --demo.',
  table:'Tabulka',chart:'Graf',
@@ -227,7 +228,7 @@ cs:{
 en:{
  nav_overview:'Overview',nav_queries:'Keywords',nav_pages:'Pages',nav_opps:'Opportunities',nav_audit:'Technical audit',nav_ai:'AI / GEO',nav_ideas:'Keyword ideas',nav_settings:'Settings',
  r7:'7d',r28:'28d',r90:'3 mo',r180:'6 mo',r365:'12 mo',
- b_menu:'Update data',b_sync:'Sync data',b_crawl:'Run audit',b_ideas:'Refresh ideas',logout:'Sign out',
+ b_menu:'Update data',b_restart:'Restart app and reload config',tip_restart:'Re-reads config.yaml (e.g. after adding a site) and reloads the page',restart_confirm:'Restart the app? It takes a few seconds.',restart_busy:'A job (sync/audit) is running. Wait until it finishes.',restart_wait:'Restarting…',restart_fail:'The app did not come back after restarting. Check /tmp/seocompass-server.log (possible config.yaml error).',b_sync:'Sync data',b_crawl:'Run audit',b_ideas:'Refresh ideas',logout:'Sign out',
  tip_sync:'Pull Search Console + GA4',tip_crawl:'Crawl the site and check technical issues',tip_ideas:'Refresh keyword ideas',
  demo:'Demo mode: synthetic data. Run <code>./run.sh</code> (without --demo) after connecting Google.',
  table:'Table',chart:'Chart',
@@ -595,7 +596,7 @@ function tabs() { $('#tabs').innerHTML = TABS.filter(has).map(k=>`<a data-k="${k
   document.querySelectorAll('#tabs a').forEach(a=>a.onclick=()=>go(a.dataset.k)); }
 function chrome() {   // all translatable static chrome
   document.documentElement.lang = lang;
-  $('#b-menu').textContent = t('b_menu'); $('#b-sync').textContent = t('b_sync'); $('#b-sync').title = t('tip_sync'); $('#b-crawl').textContent = t('b_crawl'); $('#b-crawl').title = t('tip_crawl');
+  $('#b-restart').textContent = t('b_restart'); $('#b-restart').title = t('tip_restart'); $('#b-menu').textContent = t('b_menu'); $('#b-sync').textContent = t('b_sync'); $('#b-sync').title = t('tip_sync'); $('#b-crawl').textContent = t('b_crawl'); $('#b-crawl').title = t('tip_crawl');
   $('#b-ideas').textContent = t('b_ideas'); $('#b-ideas').title = t('tip_ideas'); $('#logout').textContent = t('logout');
   $('#demo').innerHTML = t('demo');
   $('#ranges').innerHTML = RANGES.map(d=>`<button data-k="${d}" class="${d===state.days?'on':''}">${t('r'+d)}</button>`).join('');
@@ -627,6 +628,17 @@ function setTheme(th) { if (th) document.documentElement.dataset.theme = th; els
   if (state.site) $('#site').value = state.site; else $('#site').style.display = 'none';
   $('#site').onchange = e => { state.site = e.target.value; try { localStorage.setItem('site', state.site); } catch(x) {} poll(); render(); };
   const h = location.hash.slice(1); state.tab = (TABS.includes(h) && has(h)) ? h : (TABS.find(has) || 'overview');
+  $('#b-restart').onclick = async () => {
+    if (!confirm(t('restart_confirm'))) return;
+    try { await post('admin/restart'); } catch(e) { if (e.status === 409) { toast(t('restart_busy')); return; } toast((e.data && e.data.error) || e.message); return; }
+    $('#jobmsg').innerHTML = '<span class="spin"></span> ' + t('restart_wait');
+    await new Promise(r => setTimeout(r, 1500));
+    for (let i = 0; i < 40; i++) {                       // wait up to ~40 s for the server to answer again
+      try { const r = await fetch('/api/me', {headers:{'X-Requested-With':'sc'}}); if (r.ok || r.status === 401) { location.reload(); return; } } catch(e) {}
+      await new Promise(r => setTimeout(r, 1000));
+    }
+    $('#jobmsg').textContent = ''; toast(t('restart_fail'));
+  };
   $('#b-sync').onclick = () => run('sync'); $('#b-crawl').onclick = () => run('crawl'); $('#b-ideas').onclick = () => run('ideas');
   chrome(); tabs(); render(); poll();
 })();

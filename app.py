@@ -323,6 +323,22 @@ def admin_test_email():
         return jsonify({"sent": False, "error": str(ex)}), 502
     return jsonify({"sent": True})
 
+@app.post("/api/admin/restart")
+@admin_only
+def admin_restart():
+    """Re-exec the process so config.yaml is re-read. The PID stays the same, so launchd is not disturbed."""
+    if any(v.get("state") == "running" for v in jobs.values()):
+        return jsonify({"restarting": False, "error": "running"}), 409
+    db.log(C(), "-", "restart", True, g.user["email"])
+    def _go():
+        import time; time.sleep(0.6)               # let the response reach the browser
+        for fd in range(3, 1024):                   # make sure the listening socket is released on exec
+            try: os.set_inheritable(fd, False)
+            except OSError: pass
+        os.execv(sys.executable, [sys.executable] + sys.argv)
+    threading.Thread(target=_go, daemon=True).start()
+    return jsonify({"restarting": True})
+
 # ------------------------------------------------------------------ CLI / main
 def cli(cmd, only):
     targets = [SITES[only]] if only else cfg["sites"]

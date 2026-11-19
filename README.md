@@ -92,6 +92,10 @@ Security notes: only hashes of tokens and sessions are stored; login responses n
 
 Overwrite all files except `config.yaml` and `data/` (your database). Add the new `auth:` and `smtp:` blocks to your `config.yaml` (optional; without `auth.admins` it behaves as before). The new `users`, `sessions` and log tables are created automatically.
 
+## Adding a site
+
+Add it to `sites:` in `config.yaml`, give the service account access in its Search Console and GA4 properties, then use **Aktualizace dat → Restartovat aplikaci a načíst konfiguraci** in the dashboard. The app re-reads the config, the page reloads, and the new site appears in the dropdown. Then run **Synchronizovat data** (and the audit) for it. The restart is refused while a sync or audit is running.
+
 ## Reading the numbers
 
 - **Position / clicks** come straight from Search Console and match its UI. Data lags about 2 days.

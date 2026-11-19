@@ -1,0 +1,51 @@
+# Copy to config.yaml and edit.
+google:
+  service_account_file: ./service-account.json   # see README, step 1
+
+settings:
+  db_path: ./seo_compass.db
+  gsc_backfill_days: 480        # Search Console keeps ~16 months
+  min_impressions: 30           # ignore tiny queries in opportunity lists
+  crawl_max_pages: 600
+  crawl_delay_seconds: 0.2
+  port: 8765
+
+sites:
+  - id: mimimami
+    name: mimimami.cz
+    domain: mimimami.cz
+    gsc_property: "sc-domain:mimimami.cz"     # or "https://mimimami.cz/"
+    ga4_property_id: "123456789"              # GA4 > Admin > Property settings
+    sitemaps: ["https://mimimami.cz/sitemap_index.xml"]
+    language: cs
+    country: cz
+    seed_keywords: ["detske obleceni", "kojenecke body"]
+  - id: slovem
+    name: slovem.eu
+    domain: slovem.eu
+    gsc_property: "sc-domain:slovem.eu"
+    ga4_property_id: "987654321"
+    sitemaps: ["https://slovem.eu/sitemap_index.xml"]
+    language: cs
+    country: cz
+    seed_keywords: ["make-up", "kosmetika"]
+
+# ---- Sharing with clients (optional) --------------------------------------
+# Leave admins empty to run locally without login (the app then refuses to listen on a network address).
+# Add your e-mail to require login: you (and anyone listed here) become admins; clients are added in the Settings tab.
+auth:
+  admins: []                          # e.g. ["adam@example.cz"]
+  base_url: "http://localhost:8765"   # public address clients use, e.g. https://seo.example.cz  (must be https when shared)
+  session_days: 30
+  token_minutes: 15                   # how long a login link stays valid
+  trust_proxy: false                  # true only behind Cloudflare Tunnel / a reverse proxy (uses the real client IP for rate limits)
+
+# SMTP used to send login links. Without it, links are printed in the server log and shown to you in Settings.
+smtp:
+  host: ""                            # e.g. smtp.hostinger.com
+  port: 465
+  security: ssl                       # ssl | starttls | none
+  user: ""
+  password: ""
+  from: ""                            # e.g. seo@example.cz
+  from_name: "SEO Compass"

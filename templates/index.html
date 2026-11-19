@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SEO Compass</title>
+<script src="/chart.umd.js"></script>
+<style>
+/* Palette: validated categorical slots (light/dark), status colours, ink and chrome tokens */
+:root{color-scheme:light;
+ --page:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink2:#52514e;--muted:#898781;--grid:#e1e0d9;--axis:#c3c2b7;--ring:rgba(11,11,11,.10);--wash:rgba(11,11,11,.045);
+ --s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;--s4:#eda100;--s5:#e87ba4;--s6:#008300;--s7:#6250d6;--s8:#e34948;
+ --good:#0ca30c;--good-text:#006300;--warn:#fab219;--serious:#ec835a;--crit:#d03b3b;--crit-text:#b32f2f;
+ --seq1:#cde2fb;--seq2:#9ec5f4;--seq3:#5598e7}
+:root[data-theme="dark"]{color-scheme:dark;
+ --page:#0d0d0d;--surface:#1a1a19;--ink:#f0efec;--ink2:#c3c2b7;--muted:#898781;--grid:#2c2c2a;--axis:#383835;--ring:rgba(255,255,255,.10);--wash:rgba(255,255,255,.06);
+ --s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;--s6:#0ca30c;--s7:#9085e9;--s8:#e66767;
+ --good-text:#0ca30c;--crit-text:#ec6a6a;--seq1:#184f95;--seq2:#256abf;--seq3:#3987e5}
+@media(prefers-color-scheme:dark){:root:where(:not([data-theme="light"])){color-scheme:dark;
+ --page:#0d0d0d;--surface:#1a1a19;--ink:#f0efec;--ink2:#c3c2b7;--grid:#2c2c2a;--axis:#383835;--ring:rgba(255,255,255,.10);--wash:rgba(255,255,255,.06);
+ --s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;--s6:#0ca30c;--s7:#9085e9;--s8:#e66767;
+ --good-text:#0ca30c;--crit-text:#ec6a6a;--seq1:#184f95;--seq2:#256abf;--seq3:#3987e5}}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--page);color:var(--ink);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+/* ---- top bar */
+header{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--page) 82%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--grid)}
+.bar{max-width:1360px;margin:auto;padding:12px 28px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:16px;letter-spacing:-.2px;margin-right:6px}
+.logo{width:26px;height:26px;border-radius:8px;background:var(--s1);display:grid;place-items:center}
+.logo svg{width:16px;height:16px}
+.seg{display:inline-flex;background:var(--wash);border-radius:10px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;color:var(--ink2);padding:5px 12px;border-radius:8px;font:inherit;font-size:13px;cursor:pointer}
+.seg button:hover{color:var(--ink)}
+.seg button.on{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:0 0 0 1px var(--ring)}
+.spacer{flex:1}
+.btn{font:inherit;font-size:13px;border:1px solid var(--ring);background:var(--surface);color:var(--ink);padding:6px 12px;border-radius:9px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.btn:hover{background:var(--wash)}
+.btn.icon{padding:6px 9px}
+.job{font-size:12px;color:var(--ink2)}
+.spin{width:10px;height:10px;border:2px solid var(--axis);border-top-color:var(--s1);border-radius:50%;animation:sp .8s linear infinite;display:inline-block}
+@keyframes sp{to{transform:rotate(360deg)}}
+nav{max-width:1360px;margin:auto;padding:0 28px;display:flex;gap:4px;overflow-x:auto}
+nav a{padding:9px 14px;cursor:pointer;color:var(--ink2);border-bottom:2px solid transparent;white-space:nowrap;text-decoration:none;font-weight:500}
+nav a:hover{color:var(--ink)}nav a.on{color:var(--ink);border-color:var(--s1);font-weight:600}
+main{max-width:1360px;margin:auto;padding:22px 28px 60px}
+#view{transition:opacity .15s}#view.busy{opacity:.45;pointer-events:none}
+/* ---- cards & grid */
+.grid{display:grid;gap:16px}.t4{grid-template-columns:repeat(4,1fr)}.t3{grid-template-columns:repeat(3,1fr)}.t2{grid-template-columns:repeat(2,1fr)}.t21{grid-template-columns:2fr 1fr}
+@media(max-width:1100px){.t4{grid-template-columns:repeat(2,1fr)}.t3,.t21{grid-template-columns:1fr 1fr}}
+@media(max-width:720px){.t4,.t3,.t2,.t21{grid-template-columns:1fr}.bar,main,nav{padding-left:14px;padding-right:14px}}
+.card{background:var(--surface);border:1px solid var(--ring);border-radius:16px;padding:18px 20px;min-width:0}
+.card+.card,.grid+.grid,.grid+.card,.card+.grid{margin-top:0}
+.stack{display:flex;flex-direction:column;gap:16px}
+.ch{display:flex;align-items:flex-start;gap:10px;margin-bottom:12px}
+.ch h3{margin:0;font-size:14px;font-weight:600;letter-spacing:-.1px}
+.ch .sub{font-size:12px;color:var(--ink2);margin-top:1px}
+.ch .grow{flex:1}
+.tbtn{font-size:11px;color:var(--ink2);background:transparent;border:1px solid var(--ring);border-radius:7px;padding:2px 8px;cursor:pointer}
+.tbtn:hover{background:var(--wash)}
+.plot{position:relative;height:250px}.plot.sm{height:170px}.plot.lg{height:300px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin-bottom:8px}
+.legend i{display:inline-block;width:12px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}
+.legend i.box{height:10px;width:10px;border-radius:3px}
+.hint{color:var(--ink2);font-size:12px}
+/* ---- KPI tiles */
+.tile{padding:16px 18px 12px;display:flex;flex-direction:column;gap:2px;position:relative}
+.tile .l{font-size:12px;color:var(--ink2);font-weight:500}
+.tile .v{font-size:30px;font-weight:700;letter-spacing:-.8px;line-height:1.15}
+.tile .row{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--ink2);min-height:20px}
+.tile svg.sp{width:100%;height:38px;margin-top:6px;overflow:visible}
+.delta{font-weight:600;font-size:12px;display:inline-flex;gap:3px;align-items:center}
+.delta.good{color:var(--good-text)}.delta.bad{color:var(--crit-text)}.delta.flat{color:var(--muted)}
+.ring{position:relative;width:104px;height:104px;flex:none}
+.ring b{position:absolute;inset:0;display:grid;place-items:center;font-size:28px;letter-spacing:-.8px}
+/* ---- inline bars */
+.hb{display:grid;grid-template-columns:minmax(80px,32%) 1fr auto;gap:10px;align-items:center;padding:5px 0;font-size:13px}
+.hb .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink2)}
+.hb .track{height:10px;border-radius:0 4px 4px 0;position:relative}
+.hb .fill{height:100%;background:var(--s1);border-radius:0 4px 4px 0;min-width:2px;transition:filter .1s}
+.hb:hover .fill{filter:brightness(1.12)}.hb .val{font-variant-numeric:tabular-nums;font-weight:600;min-width:44px;text-align:right}
+.mbar{display:flex;align-items:center;gap:8px;justify-content:flex-end}.mbar i{display:block;height:6px;border-radius:0 3px 3px 0;background:var(--s1);opacity:.85}
+.seg-bar{display:flex;gap:2px;height:14px;margin:6px 0 12px}.seg-bar i{display:block;height:100%;border-radius:4px;min-width:3px}
+/* ---- tables */
+.scroll{max-height:540px;overflow:auto;margin:0 -8px;padding:0 8px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:600;text-align:left;padding:8px 8px;cursor:pointer;white-space:nowrap;position:sticky;top:0;background:var(--surface);border-bottom:1px solid var(--grid)}
+td{padding:9px 8px;border-bottom:1px solid var(--grid);vertical-align:top}
+tbody tr:hover td{background:var(--wash)}tr:last-child td{border-bottom:0}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.url{max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;color:var(--ink);text-decoration:none;border-bottom:1px dotted var(--axis)}
+.url:hover{border-color:var(--ink)}
+.chip{display:inline-block;padding:1px 8px;border-radius:99px;font-size:11px;font-weight:600;background:var(--wash);color:var(--ink2)}
+.pos{display:inline-block;min-width:34px;text-align:center;padding:1px 6px;border-radius:7px;background:var(--wash);font-variant-numeric:tabular-nums;font-weight:600}
+.sevl{display:inline-flex;gap:6px;align-items:center;font-size:12px;font-weight:600;color:var(--ink)}
+.dot{width:16px;height:16px;border-radius:50%;display:inline-grid;place-items:center;font-size:10px;font-weight:800;color:#fff;flex:none}
+.dot.error{background:var(--crit)}.dot.warning{background:var(--warn);color:#0b0b0b}.dot.notice{background:var(--muted)}.dot.ok{background:var(--good)}.dot.skip{background:var(--serious);color:#0b0b0b}
+tr.clk{cursor:pointer}
+input[type=search]{font:inherit;background:var(--surface);color:var(--ink);border:1px solid var(--ring);border-radius:9px;padding:6px 12px;min-width:260px}
+/* ---- opportunity cards */
+.act{display:flex;flex-direction:column;gap:6px;cursor:pointer;transition:box-shadow .12s}
+.act:hover{box-shadow:0 0 0 2px var(--s1)}
+.act .big{font-size:34px;font-weight:700;letter-spacing:-1px;line-height:1.1}
+.act .t{font-weight:600}.act .d{font-size:12px;color:var(--ink2)}
+.bot{display:flex;gap:8px;align-items:center;padding:7px 10px;border-radius:10px;background:var(--wash);font-size:13px}
+.botgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}
+.banner{background:var(--wash);border:1px dashed var(--axis);border-radius:12px;padding:8px 14px;margin-bottom:16px;font-size:13px;color:var(--ink2)}
+.empty{color:var(--ink2);padding:36px;text-align:center;font-size:13px}
+.empty b{display:block;color:var(--ink);font-size:15px;margin-bottom:4px}
+code{background:var(--wash);padding:1px 6px;border-radius:5px;font-size:12px}
+@media(max-width:1500px){.who{display:none}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.sel{font:inherit;font-size:13px;font-weight:600;color:var(--ink);background:var(--surface);border:1px solid var(--ring);border-radius:10px;padding:7px 30px 7px 12px;cursor:pointer;appearance:none;-webkit-appearance:none;
+ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' stroke='%23898781' stroke-width='1.6'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center;max-width:240px}
+.sel:hover{background-color:var(--wash)}
+.who{font-size:12px;color:var(--ink2);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+dialog{border:1px solid var(--ring);border-radius:16px;background:var(--surface);color:var(--ink);padding:0;width:min(520px,94vw);box-shadow:0 20px 60px rgba(0,0,0,.25)}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+.dlg{padding:22px 24px;display:flex;flex-direction:column;gap:14px}.dlg h3{margin:0;font-size:17px}
+.dlg label.f{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600}
+.dlg input[type=text],.dlg input[type=email]{font:inherit;padding:9px 12px;border-radius:9px;border:1px solid var(--ring);background:transparent;color:var(--ink)}
+.dlg input:disabled{opacity:.6}
+.checks{display:flex;flex-wrap:wrap;gap:8px}.checks label{display:inline-flex;gap:6px;align-items:center;font-weight:500;font-size:13px;padding:5px 10px;border:1px solid var(--ring);border-radius:9px;cursor:pointer}
+.checks label:has(input:checked){background:var(--wash);border-color:var(--s1)}
+.row2{display:flex;gap:10px;justify-content:flex-end}
+.btn.primary{background:var(--s1);color:#fff;border-color:var(--s1)}.btn.primary:hover{filter:brightness(1.08);background:var(--s1)}
+.btn.danger{color:var(--crit-text)}
+.btn.sm{padding:3px 9px;font-size:12px}
+.acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:10px 18px;border-radius:12px;font-size:13px;z-index:50;max-width:90vw;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+.linkbox{display:flex;gap:8px;align-items:center;background:var(--wash);border-radius:10px;padding:8px 10px;font-size:12px;word-break:break-all}
+.warnbox{background:var(--wash);border-left:3px solid var(--warn);border-radius:8px;padding:9px 12px;font-size:13px;margin-top:10px}
+.chips{display:flex;gap:4px;flex-wrap:wrap}
+.langseg button{padding:5px 9px;font-size:12px}
+.menu{position:relative}.menu summary{list-style:none;cursor:pointer;user-select:none}.menu summary::-webkit-details-marker{display:none}
+.menu summary::after{content:"";width:7px;height:7px;border-right:1.6px solid var(--muted);border-bottom:1.6px solid var(--muted);transform:rotate(45deg) translate(-2px,-2px);margin-left:4px}
+.pop{position:absolute;right:0;top:calc(100% + 6px);background:var(--surface);border:1px solid var(--ring);border-radius:12px;padding:6px;min-width:250px;display:flex;flex-direction:column;z-index:30;box-shadow:0 12px 36px rgba(0,0,0,.18)}
+.pop button{text-align:left;border:0;background:transparent;padding:9px 12px;border-radius:8px;font:inherit;font-size:13px;color:var(--ink);cursor:pointer}.pop button:hover{background:var(--wash)}
+.hb{grid-template-columns:minmax(90px,40%) 1fr auto!important}
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <div class="brand"><span class="logo"><svg viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M10.5 5.5 9 9 5.5 10.5 7 7z" fill="#fff"/></svg></span>SEO Compass</div>
+    <select class="sel" id="site" aria-label="Web"></select>
+    <div class="seg" id="ranges"></div>
+    <span class="spacer"></span>
+    <span class="job" id="jobmsg"></span>
+    <details class="menu" id="admin-btns" style="display:none"><summary class="btn" id="b-menu"></summary>
+      <div class="pop"><button id="b-sync"></button><button id="b-crawl"></button><button id="b-ideas"></button></div></details>
+    <div class="seg langseg" id="langs"><button data-k="cs">CZ</button><button data-k="en">EN</button></div>
+    <button class="btn icon" id="theme" aria-label="Theme"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="6"/><path d="M8 2a6 6 0 0 1 0 12z" fill="currentColor"/></svg></button>
+    <span class="who" id="who"></span>
+    <button class="btn" id="logout" style="display:none"></button>
+  </div>
+  <nav id="tabs"></nav>
+</header>
+<main>
+  <div id="demo" class="banner" style="display:none"></div>
+  <div id="view"></div>
+</main>
+<dialog id="dlg"></dialog>
+<div id="toast" class="toast" style="display:none"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let lang = 'cs'; try { const sv = localStorage.getItem('lang'); if (sv === 'cs' || sv === 'en') lang = sv; } catch(e) {}
+
+/* ------------------------------------------------------------ translations */
+const I18N = {
+cs:{
+ nav_overview:'Přehled',nav_queries:'Klíčová slova',nav_pages:'Stránky',nav_opps:'Příležitosti',nav_audit:'Technický audit',nav_ai:'AI / GEO',nav_ideas:'Nápady na klíčová slova',nav_settings:'Nastavení',
+ r7:'7 dní',r28:'28 dní',r90:'3 měs.',r180:'6 měs.',r365:'12 měs.',
+ b_menu:'Aktualizace dat',b_sync:'Synchronizovat data',b_crawl:'Spustit audit',b_ideas:'Obnovit nápady',logout:'Odhlásit',
+ tip_sync:'Stáhne data ze Search Console a GA4',tip_crawl:'Projde web a zkontroluje technické problémy',tip_ideas:'Obnoví nápady na klíčová slova',
+ demo:'Ukázková data (demo). Po připojení Googlu spusťte <code>./run.sh</code> bez --demo.',
+ table:'Tabulka',chart:'Graf',
+ empty_t:'Zatím žádná data',empty_d:'Po dokončení nastavení Googlu (viz README) klikněte na „Synchronizovat data“.',
+ err_t:'Něco se pokazilo',noaccess:'K této části nemáte přístup.',nosite:'Zatím nemáte přiřazený žádný web. Požádejte správce o přístup.',
+ t_clicks:'Kliknutí z vyhledávání',t_impr:'Zobrazení',t_pos:'Průměrná pozice',t_sessions:'Všechny návštěvy',t_organic:'Organické návštěvy',t_ai:'Návštěvy z AI',t_orgrev:'Organické tržby',t_health:'Zdraví webu',
+ vsprev:'oproti předchozímu období',lowerbetter:'nižší je lepší',ofall:'{n} % všech návštěv',oftotal:'z {n} celkem',users:'{n} uživatelů',aisub:'ChatGPT, Perplexity …',
+ h_ok:'V pořádku',h_mid:'Vyžaduje péči',h_bad:'Špatný',errs_warns:'{e} chyb · {w} varování',pages_crawled:'{n} stránek prověřeno',
+ c_clicks:'Kliknutí',c_clicks_s:'Sedmidenní průměr, Search Console',c_impr:'Zobrazení',c_impr_s:'Sedmidenní průměr',c_pos:'Průměrná pozice',c_pos_s:'Sedmidenní průměr, nižší je lepší',
+ c_ses:'Návštěvy podle zdroje',c_ses_s:'Sedmidenní průměr, GA4',lg_all:'Všechny návštěvy',lg_org:'Organické vyhledávání',
+ c_chan:'Kanály návštěvnosti',c_chan_s:'Návštěvy za období',c_ai:'Návštěvy z AI asistentů',c_ai_s:'Sedmidenní průměr',c_dev:'Vyhledávání podle zařízení',c_ctry:'Vyhledávání podle zemí',unit_clicks:'Kliknutí',
+ qw_t:'Největší rychlé výhry',qw_s:'Klíčová slova na 1.–2. stránce Googlu, kde lepší stránka přinese nejvíc kliků navíc',qw_all:'Všechny příležitosti →',
+ col_kw:'Klíčové slovo',col_pos:'Pozice',col_impr:'Zobrazení',col_est:'Odhad kliků navíc',col_page:'Stránka',col_clicks:'Kliknutí',col_dclicks:'Δ kliků',col_ctr:'CTR',col_dpos:'Δ pozice',
+ col_kws:'Klíčových slov',col_osess:'Organické návštěvy',col_orev:'Organické tržby',col_before:'Před',col_now:'Nyní',col_gain:'Přírůstek',col_lost:'Pokles',col_gainest:'Přínos',col_imprs:'Zobr.',col_poss:'Poz.',col_cl:'Kliky',
+ q_t:'Klíčová slova',q_s:'Ze Search Console · změny porovnávají předchozí období stejné délky',q_ph:'Filtrovat klíčová slova…',
+ p_t:'Stránky',p_s:'Výkon ve vyhledávání spojený s organickými návštěvami a tržbami z GA4 podle vstupní stránky',p_ph:'Filtrovat stránky…',
+ o_strike:'Dostat se do top 3',o_strike_d:'Kliky navíc, pokud by klíčová slova z 1.–2. stránky vylezla na 3. pozici',
+ o_ctr:'Opravit slabé snippety',o_ctr_d:'Kliky navíc z přepsání titulků tam, kde už jste v top 5',
+ o_cann:'Soupeřící stránky',o_cann_d:'Klíčová slova, u nichž se o pozici dělí vaše vlastní stránky',
+ o_decl:'Klesající stránky',o_decl_d:'Stránky, které přišly o 30 %+ kliků oproti předchozímu období',
+ os_strike:'Na dosah: pozice 4–20',os_strike_s:'Zlepšete obsah, interní prolinkování a title, ať se posunou výš. Seřazeno podle odhadovaného přínosu.',
+ os_ctr:'Dobrá pozice, málo kliků',os_ctr_s:'Pozice v top 5, kde je CTR výrazně pod běžnou hodnotou. Přepište title a meta description, přidejte schema pro rich results.',
+ os_cann:'Kanibalizace klíčových slov',os_cann_s:'O jedno klíčové slovo soutěží víc vašich stránek. Sloučte je, nebo je odlište a propojte.',col_comp:'Soupeřící stránky',pos_n:'poz. {p} · {c} kliků',
+ os_decl:'Klesající stránky',os_decl_s:'Zkontrolujte pokles pozic, sezónnost nebo technické změny.',
+ os_rise:'Rostoucí klíčová slova',os_new:'Nová klíčová slova',os_new_s:'Bez zobrazení v předchozím období',os_lost:'Ztracená klíčová slova',
+ os_zero:'Zobrazení, ale žádné kliky',os_zero_s:'Stránka je v Googlu vidět, ale nikdo na ni neklikne: slabý snippet nebo špatný záměr hledání.',
+ a_t:'Nalezené problémy',a_s:'{p} stránek prověřeno · {d} · skóre zdraví {s}',a_issue:'Problém',a_sev:'Závažnost',a_pages:'Stránek',a_vslast:'Δ oproti minulému procházení',
+ a_aff:'Dotčená URL',a_sel:'Vyberte typ problému vlevo',a_none:'Nic nevybráno.',a_n:'{n} dotčených URL',a_empty_t:'Zatím žádný audit',a_empty_d:'Klikněte na „Spustit audit“ pro procházení webu.',col_detail:'Detail',
+ sev_error:'chyba',sev_warning:'varování',sev_notice:'upozornění',
+ g_t:'Viditelnost v AI',g_s:'Návštěvy z AI asistentů pocházejí z referenčních zdrojů v GA4. Asistenti vás často zmíní, aniž by poslali klik, proto čísla berte jako minimum, ne celkovou viditelnost. Kontrola crawlerů ukazuje, zda vás smějí citovat.',
+ g_chart:'Návštěvy z AI podle asistenta',g_chart_s:'Denně, skládaně',g_share:'Podíl podle asistenta',g_share_s:'{n} návštěv za období',g_none:'V tomto období nebyly nalezeny žádné návštěvy z AI.',
+ g_land:'Stránky, kam AI asistenti posílají lidi',g_bots:'Přístup AI crawlerů',g_bots_s:'robots.txt. Vyhledávací boty (OAI-SearchBot, PerplexityBot, ClaudeBot…) musí být povoleny, aby vás mohly citovat. Trénovací boty (CCBot, Google-Extended) jsou samostatné obchodní rozhodnutí.',
+ g_runaudit:'Pro kontrolu robots.txt spusťte audit.',g_ready:'Připravenost na citace',g_ready_s:'Pokrytí strukturovanými daty napříč indexovatelnými stránkami z posledního procházení a soubor llms.txt (volitelná, vznikající konvence)',g_runfirst:'Nejprve spusťte audit.',
+ conv:'konv.',rev:'tržby',allowed:'povoleno',blocked:'blokováno',present:'nalezen',missing:'chybí',col_sessions:'Návštěvy',
+ i_t:'Nápady na klíčová slova',i_s:'Našeptávač Googlu, vycházející z vašich nejlepších klíčových slov ze Search Console a z témat v config.yaml. Bez údajů o hledanosti: poptávku ověřte v Google Trends nebo v Plánovači klíčových slov. {n} z {m} nápadů zatím ve Search Console nemáte.',
+ i_idea:'Nápad',i_type:'Typ',i_seed:'Výchozí téma',i_status:'Stav',i_rank:'už se umísťuje',i_norank:'zatím ne',k_question:'otázka',k_commercial:'nákupní',k_topic:'téma',
+ s_t:'Přístup a uživatelé',s_mail:'Odesílání e-mailů',s_smtp_ok:'SMTP nastaveno',s_smtp_no:'SMTP není nastaveno: přihlašovací odkazy se jen vypíší do logu serveru a zobrazí se vám ke zkopírování.',
+ s_test:'Poslat zkušební e-mail',s_test_ok:'Zkušební e-mail odeslán na {e}.',s_base:'Veřejná adresa',s_https:'Adresa není https: odkazy a cookies by putovaly nešifrovaně. Před sdílením s klienty nasaďte HTTPS.',
+ s_sess:'Přihlášení platí {d} dní, přihlašovací odkaz {m} minut a jde použít jen jednou.',s_admins:'Administrátoři (nastavují se v config.yaml)',
+ s_users:'Klienti s přístupem',s_add:'Přidat uživatele',u_user:'Uživatel',u_sites:'Weby',u_secs:'Sekce',u_rev:'Tržby',u_state:'Stav',u_last:'Poslední přihlášení',u_sess:'Relace',
+ u_all:'všechny',u_rev_y:'viditelné',u_rev_n:'skryté',u_on:'aktivní',u_off:'zablokován',u_never:'nikdy',u_edit:'Upravit',u_link:'Poslat odkaz',u_revoke:'Odhlásit všude',u_del:'Smazat',
+ u_confirm_del:'Opravdu smazat uživatele {e}?',u_confirm_revoke:'Odhlásit uživatele {e} ze všech zařízení?',u_none:'Zatím žádní klienti. Přidejte prvního tlačítkem „Přidat uživatele“.',
+ d_add:'Nový uživatel',d_edit:'Upravit uživatele',d_email:'E-mail',d_name:'Jméno (nepovinné)',d_sites:'Přístup k webům',d_secs:'Viditelné sekce',d_rev:'Zobrazit tržby a obchodní údaje',
+ d_rev_h:'Bez tohoto oprávnění se údaje o tržbách klientovi vůbec neodešlou (nejen že se skryjí).',d_active:'Účet je aktivní',d_invite:'Poslat pozvánku e-mailem',d_save:'Uložit',d_cancel:'Zrušit',
+ d_saved:'Uloženo.',d_sent:'Přihlašovací odkaz odeslán na {e}.',d_copy_h:'E-mail nelze odeslat. Odkaz ke zkopírování (platí {m} min.):',d_copy:'Kopírovat',d_copied:'Zkopírováno.',d_nosites:'Nejprve přidejte weby do config.yaml.',
+ l_t:'Protokol přístupů',l_time:'Čas',l_user:'Uživatel',l_event:'Událost',l_ip:'IP',l_detail:'Detail',
+ ev_login:'přihlášení',ev_link_requested:'žádost o odkaz',ev_link_denied_unknown:'žádost – neznámá adresa',ev_verify_failed:'neúspěšné ověření',ev_user_saved:'uživatel uložen',ev_user_deleted:'uživatel smazán',ev_sessions_revoked:'relace ukončeny',ev_link_sent_by_admin:'odkaz odeslán adminem',ev_mail_error:'chyba e-mailu',
+ off_t:'Přihlašování je vypnuté',off_d:'Web teď běží jen lokálně a bez přihlášení. Chcete-li ho sdílet s klienty, vložte svůj e-mail do <code>auth.admins</code> v config.yaml a restartujte aplikaci (postup je v README).'
+},
+en:{
+ nav_overview:'Overview',nav_queries:'Keywords',nav_pages:'Pages',nav_opps:'Opportunities',nav_audit:'Technical audit',nav_ai:'AI / GEO',nav_ideas:'Keyword ideas',nav_settings:'Settings',
+ r7:'7d',r28:'28d',r90:'3 mo',r180:'6 mo',r365:'12 mo',
+ b_menu:'Update data',b_sync:'Sync data',b_crawl:'Run audit',b_ideas:'Refresh ideas',logout:'Sign out',
+ tip_sync:'Pull Search Console + GA4',tip_crawl:'Crawl the site and check technical issues',tip_ideas:'Refresh keyword ideas',
+ demo:'Demo mode: synthetic data. Run <code>./run.sh</code> (without --demo) after connecting Google.',
+ table:'Table',chart:'Chart',
+ empty_t:'No data yet',empty_d:'After completing the Google setup (see README), click “Sync data”.',
+ err_t:'Something went wrong',noaccess:'You do not have access to this section.',nosite:'No site has been assigned to you yet. Ask the administrator for access.',
+ t_clicks:'Search clicks',t_impr:'Impressions',t_pos:'Average position',t_sessions:'All sessions',t_organic:'Organic sessions',t_ai:'AI referral sessions',t_orgrev:'Organic revenue',t_health:'Site health',
+ vsprev:'vs previous period',lowerbetter:'lower is better',ofall:'{n}% of all traffic',oftotal:'of {n} total',users:'{n} users',aisub:'ChatGPT, Perplexity …',
+ h_ok:'Healthy',h_mid:'Needs work',h_bad:'Poor',errs_warns:'{e} errors · {w} warnings',pages_crawled:'{n} pages crawled',
+ c_clicks:'Clicks',c_clicks_s:'7-day average, Search Console',c_impr:'Impressions',c_impr_s:'7-day average',c_pos:'Average position',c_pos_s:'7-day average, lower is better',
+ c_ses:'Sessions by source',c_ses_s:'7-day average, GA4',lg_all:'All sessions',lg_org:'Organic search',
+ c_chan:'Traffic channels',c_chan_s:'Sessions in period',c_ai:'AI referral sessions',c_ai_s:'7-day average: visits from AI assistants',c_dev:'Search by device',c_ctry:'Search by country',unit_clicks:'Clicks',
+ qw_t:'Biggest quick wins',qw_s:'Keywords on page 1–2 where a better page could capture the most extra clicks',qw_all:'All opportunities →',
+ col_kw:'Keyword',col_pos:'Position',col_impr:'Impressions',col_est:'Est. extra clicks',col_page:'Page',col_clicks:'Clicks',col_dclicks:'Δ clicks',col_ctr:'CTR',col_dpos:'Δ pos.',
+ col_kws:'Keywords',col_osess:'Organic sessions',col_orev:'Organic revenue',col_before:'Before',col_now:'Now',col_gain:'Gain',col_lost:'Lost',col_gainest:'Gain',col_imprs:'Impr.',col_poss:'Pos.',col_cl:'Clicks',
+ q_t:'Keywords',q_s:'From Search Console · changes compare with the previous period of equal length',q_ph:'Filter keywords…',
+ p_t:'Pages',p_s:'Search performance joined with GA4 organic sessions and revenue per landing page',p_ph:'Filter pages…',
+ o_strike:'Reach the top 3',o_strike_d:'Extra clicks if page 1–2 keywords moved to position 3',
+ o_ctr:'Fix weak snippets',o_ctr_d:'Extra clicks from rewriting titles where you already rank top 5',
+ o_cann:'Competing pages',o_cann_d:'Keywords where your own pages split the ranking',
+ o_decl:'Declining pages',o_decl_d:'Pages that lost 30%+ of clicks vs the previous period',
+ os_strike:'Striking distance: positions 4–20',os_strike_s:'Improve content depth, internal links and title to push these up. Sorted by estimated gain.',
+ os_ctr:'Ranking well, clicked rarely',os_ctr_s:'Top-5 positions where CTR is far below normal for that position. Rewrite title and meta description; add rich-result schema.',
+ os_cann:'Keyword cannibalisation',os_cann_s:'Several of your pages compete for one keyword. Merge them, or differentiate and cross-link.',col_comp:'Competing pages',pos_n:'pos {p} · {c} clicks',
+ os_decl:'Declining pages',os_decl_s:'Check for ranking loss, seasonality or technical changes.',
+ os_rise:'Rising keywords',os_new:'New keywords',os_new_s:'No impressions in the previous period',os_lost:'Lost keywords',
+ os_zero:'Impressions but zero clicks',os_zero_s:'Visible in Google but never clicked: weak snippet or wrong intent.',
+ a_t:'Issues found',a_s:'{p} pages crawled · {d} · health score {s}',a_issue:'Issue',a_sev:'Severity',a_pages:'Pages',a_vslast:'Δ vs last crawl',
+ a_aff:'Affected URLs',a_sel:'Select an issue type on the left',a_none:'Nothing selected.',a_n:'{n} affected URLs',a_empty_t:'No audit yet',a_empty_d:'Click “Run audit” to crawl the site.',col_detail:'Detail',
+ sev_error:'error',sev_warning:'warning',sev_notice:'notice',
+ g_t:'AI visibility',g_s:'Visits from AI assistants come from GA4 referral sources. Assistants often mention you without sending a click, so treat these numbers as a floor, not total visibility. Crawler checks show whether you are allowed to be cited.',
+ g_chart:'AI referral sessions by assistant',g_chart_s:'Daily, stacked',g_share:'Share by assistant',g_share_s:'{n} sessions in period',g_none:'No AI referral traffic found in this period.',
+ g_land:'Pages AI assistants send people to',g_bots:'AI crawler access',g_bots_s:'robots.txt. Search bots (OAI-SearchBot, PerplexityBot, ClaudeBot…) must be allowed to be cited. Training-only bots (CCBot, Google-Extended) are a separate business choice.',
+ g_runaudit:'Run the audit to check robots.txt.',g_ready:'Citation-readiness signals',g_ready_s:'Structured data coverage across indexable pages in the last crawl, plus llms.txt (an optional, emerging convention)',g_runfirst:'Run the audit first.',
+ conv:'conv.',rev:'revenue',allowed:'allowed',blocked:'blocked',present:'present',missing:'missing',col_sessions:'Sessions',
+ i_t:'Keyword ideas',i_s:'Google Autocomplete, seeded from your top Search Console keywords and the seeds in config.yaml. No search volume available: validate demand in Google Trends or Keyword Planner. {n} of {m} ideas are not in your Search Console data yet.',
+ i_idea:'Idea',i_type:'Type',i_seed:'Seed',i_status:'Status',i_rank:'already ranking',i_norank:'not ranking',k_question:'question',k_commercial:'commercial',k_topic:'topic',
+ s_t:'Access and users',s_mail:'Email delivery',s_smtp_ok:'SMTP configured',s_smtp_no:'SMTP is not configured: login links are only printed in the server log and shown to you to copy.',
+ s_test:'Send test email',s_test_ok:'Test email sent to {e}.',s_base:'Public address',s_https:'The address is not https: links and cookies would travel unencrypted. Deploy HTTPS before sharing with clients.',
+ s_sess:'Sessions last {d} days; a login link is valid for {m} minutes and works once.',s_admins:'Administrators (set in config.yaml)',
+ s_users:'Clients with access',s_add:'Add user',u_user:'User',u_sites:'Sites',u_secs:'Sections',u_rev:'Revenue',u_state:'Status',u_last:'Last sign-in',u_sess:'Sessions',
+ u_all:'all',u_rev_y:'visible',u_rev_n:'hidden',u_on:'active',u_off:'blocked',u_never:'never',u_edit:'Edit',u_link:'Send link',u_revoke:'Sign out everywhere',u_del:'Delete',
+ u_confirm_del:'Really delete user {e}?',u_confirm_revoke:'Sign {e} out of all devices?',u_none:'No clients yet. Add the first with “Add user”.',
+ d_add:'New user',d_edit:'Edit user',d_email:'Email',d_name:'Name (optional)',d_sites:'Site access',d_secs:'Visible sections',d_rev:'Show revenue and commercial data',
+ d_rev_h:'Without this, revenue figures are never sent to the client at all (not just hidden).',d_active:'Account is active',d_invite:'Email an invitation',d_save:'Save',d_cancel:'Cancel',
+ d_saved:'Saved.',d_sent:'Sign-in link sent to {e}.',d_copy_h:'Email could not be sent. Link to copy (valid {m} min.):',d_copy:'Copy',d_copied:'Copied.',d_nosites:'Add sites to config.yaml first.',
+ l_t:'Access log',l_time:'Time',l_user:'User',l_event:'Event',l_ip:'IP',l_detail:'Detail',
+ ev_login:'signed in',ev_link_requested:'link requested',ev_link_denied_unknown:'request – unknown address',ev_verify_failed:'failed verification',ev_user_saved:'user saved',ev_user_deleted:'user deleted',ev_sessions_revoked:'sessions revoked',ev_link_sent_by_admin:'link sent by admin',ev_mail_error:'email error',
+ off_t:'Sign-in is switched off',off_d:'The app is running locally without login. To share it with clients, put your email in <code>auth.admins</code> in config.yaml and restart (see README).'
+}};
+const t = (k, v) => { let s = (I18N[lang][k] ?? I18N.en[k] ?? k); if (v) for (const x in v) s = s.replace('{'+x+'}', v[x]); return s; };
+const LOC = () => lang === 'cs' ? 'cs-CZ' : 'en-GB';
+const nf = (n, d=0) => Number(n).toLocaleString(LOC(), {maximumFractionDigits: d});
+const dec = (n, d=1) => n == null ? '–' : Number(n).toLocaleString(LOC(), {minimumFractionDigits: d, maximumFractionDigits: d});
+const fmt = n => n == null ? '–' : Math.abs(n) >= 1e6 ? nf(n/1e6,1)+(lang==='cs'?' mil.':'M') : Math.abs(n) >= 1e4 ? nf(n/1e3,1)+(lang==='cs'?' tis.':'k') : nf(n);
+const dshort = iso => { const [y,m,d] = iso.split('-'); return lang === 'cs' ? `${+d}. ${+m}.` : `${m}-${d}`; };
+const dlong = iso => new Date(iso+'T00:00:00').toLocaleDateString(LOC(), {day:'numeric', month:'long', year:'numeric'});
+const dts = ts => ts ? new Date(ts*1000).toLocaleString(LOC(), {day:'numeric', month:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit'}) : t('u_never');
+const CH = {'Organic Search':'Organické vyhledávání','Direct':'Přímý přístup','Referral':'Odkazy','Paid Search':'Placené vyhledávání','Social':'Sociální sítě','Organic Social':'Organické sociální sítě','Paid Social':'Placené sociální sítě','Email':'E-mail','Display':'Display','Unassigned':'Nepřiřazeno','Organic Shopping':'Organické nákupy','Paid Shopping':'Placené nákupy','Paid Other':'Placené ostatní','Affiliates':'Affiliate','Organic Video':'Organické video','Paid Video':'Placené video','Cross-network':'Cross-network','Audio':'Audio','SMS':'SMS','Mobile Push Notifications':'Push notifikace'};
+const DEV = {MOBILE:['Mobil','Mobile'],DESKTOP:['Počítač','Desktop'],TABLET:['Tablet','Tablet']};
+const A3 = {cze:'CZ',svk:'SK',pol:'PL',deu:'DE',aut:'AT',usa:'US',gbr:'GB',fra:'FR',ita:'IT',esp:'ES',nld:'NL',bel:'BE',che:'CH',hun:'HU',ukr:'UA',rou:'RO',bgr:'BG',hrv:'HR',svn:'SI',irl:'IE',prt:'PT',swe:'SE',nor:'NO',dnk:'DK',fin:'FI',can:'CA',aus:'AU',ind:'IN',chn:'CN',jpn:'JP',rus:'RU',tur:'TR',bra:'BR',mex:'MX',lva:'LV',ltu:'LT',est:'EE',grc:'GR',srb:'RS',isr:'IL',are:'AE',lux:'LU',cyp:'CY',mlt:'MT',isl:'IS',kor:'KR',sgp:'SG',zaf:'ZA'};
+const chName = c => lang === 'cs' ? (CH[c] || c) : c;
+const devName = d => (DEV[d] || [d,d])[lang === 'cs' ? 0 : 1];
+const ctryName = c => { const a2 = A3[(c||'').toLowerCase()]; if (!a2) return (c||'').toUpperCase(); try { return new Intl.DisplayNames([LOC()], {type:'region'}).of(a2); } catch(e) { return a2; } };
+const ISSUE_CS = {'Unreachable':'Stránka nedostupná','Server error (5xx)':'Chyba serveru (5xx)','Broken page (4xx)':'Nefunkční stránka (4xx)','Redirect chain':'Řetězec přesměrování','Redirect':'Přesměrování','Redirecting URL in sitemap':'Přesměrované URL v sitemapě','Missing title':'Chybí title','Title too long':'Příliš dlouhý title','Title too short':'Příliš krátký title','Missing meta description':'Chybí meta description','Meta description too long':'Příliš dlouhá meta description','Missing H1':'Chybí H1','Multiple H1':'Více nadpisů H1','Missing canonical':'Chybí canonical','Canonical points elsewhere':'Canonical ukazuje jinam','Noindex page in sitemap':'Noindex stránka v sitemapě','Thin content':'Slabý obsah','Images without alt text':'Obrázky bez alt textu','Slow response':'Pomalá odezva','Mixed content (http resources)':'Smíšený obsah (http zdroje)','Missing viewport meta':'Chybí viewport meta','Missing Open Graph tags':'Chybí Open Graph tagy','Orphan page (no internal links)':'Osiřelá stránka (bez interních odkazů)','Indexable page not in sitemap':'Indexovatelná stránka mimo sitemapu','Broken internal link':'Nefunkční interní odkaz','Duplicate title':'Duplicitní title','Duplicate meta description':'Duplicitní meta description'};
+const issueName = s => lang === 'cs' ? (ISSUE_CS[s] || s) : s;
+
+/* ------------------------------------------------------------ state, api */
+const TABS = ['overview','queries','pages','opps','audit','ai','ideas','settings'];
+const RANGES = [7,28,90,180,365];
+const state = {tab:'overview', site:null, days:28, charts:[], twins:{}, me:null, loadSeq:0};
+const ENTITY = {ChatGPT:'--s1', Perplexity:'--s2', Gemini:'--s3', Copilot:'--s4', Claude:'--s5', DeepSeek:'--s6', 'Meta AI':'--s7'};   // colour follows the entity
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+async function req(url, opts={}) {
+  const r = await fetch(url, {...opts, headers:{'X-Requested-With':'sc', ...(opts.body ? {'Content-Type':'application/json'} : {})}});
+  if (r.status === 401) { location.href = '/login'; throw new Error('auth'); }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(j.error || r.status), {status: r.status, data: j});
+  return j;
+}
+const api = (p, params={}) => { const u = new URL('/api/'+p, location.origin); u.searchParams.set('site', state.site); u.searchParams.set('days', state.days); for (const k in params) u.searchParams.set(k, params[k]); return req(u); };
+const post = (p, body) => req('/api/'+p, {method:'POST', body: JSON.stringify(body || {})});
+const has = s => state.me.sections.includes(s);
+const isAdmin = () => state.me.role === 'admin';
+
+/* ------------------------------------------------------------ components */
+function delta(d, invert=false, suffix='%') {
+  if (d == null) return '<span class="delta flat">–</span>';
+  const good = invert ? d < 0 : d > 0, cls = d === 0 ? 'flat' : good ? 'good' : 'bad';
+  return `<span class="delta ${cls}">${d>0?'▲':d<0?'▼':'•'} ${nf(Math.abs(d), 1)}${suffix}</span>`;
+}
+function spark(vals, invert=false) {
+  if (!vals || vals.length < 2) return '';
+  const v = invert ? vals.map(x => -x) : vals, mn = Math.min(...v), mx = Math.max(...v), r = (mx - mn) || 1, W = 100, H = 36;
+  const pts = v.map((y,i) => [i/(v.length-1)*W, H-3-(y-mn)/r*(H-8)]);
+  return `<svg class="sp" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><polyline fill="none" stroke="var(--s1)" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" points="${pts.map(p=>p.join(',')).join(' ')}"/></svg>`;
+}
+function tile(label, val, d, inv, sub, sp) {
+  return `<div class="card tile"><div class="l">${label}</div><div class="v">${val}</div><div class="row">${d!==undefined?delta(d,inv):''}<span>${sub||''}</span></div>${sp||''}</div>`;
+}
+function hbars(items, nameKey, valKey, label) {
+  if (!items || !items.length) return `<div class="empty">${t('empty_t')}</div>`;
+  const max = Math.max(...items.map(i => i[valKey])) || 1;
+  return items.map(i => { const nm = label ? label(i) : i[nameKey]; return `<div class="hb" title="${esc(nm)}: ${esc(nf(i[valKey]))}"><span class="name">${esc(nm)}</span><span class="track"><div class="fill" style="width:${i[valKey]/max*100}%"></div></span><span class="val">${fmt(i[valKey])}</span></div>`; }).join('');
+}
+function card(id, title, sub, plotCls='', legend='') {
+  return `<div class="card"><div class="ch"><div class="grow"><h3>${esc(title)}</h3>${sub?`<div class="sub">${esc(sub)}</div>`:''}</div><button class="tbtn" data-twin="${id}">${t('table')}</button></div>${legend}<div class="plot ${plotCls}" id="p-${id}"><canvas id="${id}"></canvas></div><div class="scroll" id="tw-${id}" style="display:none"></div></div>`;
+}
+function killCharts(){ state.charts.forEach(c=>c.destroy()); state.charts=[]; state.twins={}; }
+const crosshair = {id:'cross', afterDatasetsDraw(c){ const a=c.tooltip&&c.tooltip._active; if(a&&a.length){ const x=a[0].element.x,{top,bottom}=c.chartArea,g=c.ctx; g.save(); g.beginPath(); g.moveTo(x,top); g.lineTo(x,bottom); g.lineWidth=1; g.strokeStyle=css('--axis'); g.stroke(); g.restore(); } }};
+function baseOpts() {
+  return {responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false}, animation:{duration:250},
+    plugins:{legend:{display:false}, tooltip:{backgroundColor:css('--surface'),titleColor:css('--ink2'),bodyColor:css('--ink'),borderColor:css('--ring'),borderWidth:1,padding:10,boxPadding:4,usePointStyle:true,
+      titleFont:{size:11,weight:'500'},bodyFont:{size:13,weight:'600'},callbacks:{title:i=>dlong(i[0].label),label:c=>' '+c.dataset.label+'  '+(c.parsed.y==null?'':nf(c.parsed.y,1))}}},
+    scales:{x:{ticks:{color:css('--muted'),maxTicksLimit:7,maxRotation:0,font:{size:11},callback(v){return dshort(this.getLabelForValue(v))}},grid:{display:false},border:{color:css('--axis')}},
+            y:{ticks:{color:css('--muted'),font:{size:11},callback:v=>fmt(v)},grid:{color:css('--grid')},border:{display:false},beginAtZero:true}}};
+}
+function smooth(a, k=7){ return a.map((_,i)=>{ const s=a.slice(Math.max(0,i-k+1),i+1); return s.reduce((x,y)=>x+y,0)/s.length; }); }
+function line(label, color, data) { return {label, data, borderColor:css(color), backgroundColor:css(color), borderWidth:2, pointRadius:0, pointHoverRadius:5, pointHoverBorderWidth:2, pointHoverBorderColor:css('--surface'), tension:.3}; }
+function chart(id, cfg, twin) { const c = new Chart(document.getElementById(id), {...cfg, plugins:[crosshair]}); state.charts.push(c); if (twin) state.twins[id] = twin; return c; }
+function wireTwins() {
+  document.querySelectorAll('[data-twin]').forEach(b => b.onclick = () => {
+    const id = b.dataset.twin, tw = $('#tw-'+id), pl = $('#p-'+id), showT = tw.style.display === 'none';
+    if (showT && !tw.innerHTML && state.twins[id]) tw.innerHTML = table(state.twins[id].cols, state.twins[id].rows);
+    tw.style.display = showT ? '' : 'none'; pl.style.display = showT ? 'none' : ''; b.textContent = showT ? t('chart') : t('table');
+  });
+}
+function table(cols, rows, opts={}) {
+  if (!rows || !rows.length) return `<div class="empty">${opts.empty || t('empty_t')}</div>`;
+  const id = 't'+Math.random().toString(36).slice(2,8);
+  const rowHtml = r => '<tr'+(opts.rowAttr?opts.rowAttr(r):'')+'>'+cols.map(c=>`<td class="${c.n?'n':''}">${c.f?c.f(r):esc(r[c.k])}</td>`).join('')+'</tr>';
+  setTimeout(()=>{ const tb=document.getElementById(id); if(!tb) return; tb.querySelectorAll('th').forEach(th=>th.onclick=()=>{
+    const i=+th.dataset.i, col=cols[i]; if (col.nosort) return; const dir=th.dataset.dir==='1'?-1:1; th.dataset.dir=dir===1?'1':'0';
+    const key = r => col.s ? col.s(r) : r[col.k];
+    const sorted=[...rows].sort((a,b)=>{const x=key(a),y=key(b);return (typeof x==='number'?x-y:String(x).localeCompare(String(y)))*dir*-1;});
+    tb.querySelector('tbody').innerHTML = sorted.map(rowHtml).join(''); if (opts.after) opts.after(); }); if (opts.after) opts.after(); },0);
+  return `<div class="scroll"><table id="${id}"><thead><tr>${cols.map((c,i)=>`<th class="${c.n?'n':''}" data-i="${i}">${c.h}</th>`).join('')}</tr></thead><tbody>${rows.map(rowHtml).join('')}</tbody></table></div>`;
+}
+const short = u => { try { const x = new URL(u); return x.pathname + x.search; } catch { return u; } };
+const urlCell = (k='page') => ({h:t('col_page'), k, s:r=>r[k], f:r=>`<a class="url" href="${esc(r[k])}" target="_blank" rel="noopener" title="${esc(r[k])}">${esc(short(r[k]))}</a>`});
+const mbar = (key, max, f=v=>fmt(v)) => ({n:1, k:key, f:r=>`<div class="mbar"><i style="width:${Math.max(2,r[key]/max*54)}px"></i><b>${f(r[key])}</b></div>`});
+const sevl = s => `<span class="sevl"><span class="dot ${s}">${s==='error'?'✕':s==='warning'?'!':'i'}</span>${t('sev_'+s)}</span>`;
+const posChip = r => `<span class="pos">${dec(r.position)}</span>`;
+const empty = (title, d) => `<div class="card"><div class="empty"><b>${title}</b>${d||''}</div></div>`;
+function toast(msg) { const el = $('#toast'); el.textContent = msg; el.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => el.style.display = 'none', 3800); }
+
+/* ------------------------------------------------------------ views */
+const V = {};
+V.overview = async () => {
+  const [o, ts, br, opp] = await Promise.all([api('overview'), api('timeseries'), api('breakdown'), has('opps') ? api('opportunities') : Promise.resolve(null)]);
+  const g = o.gsc, a = o.ga, au = o.audit, G = ts.gsc || [], A = ts.ga || [];
+  if (!g && !a) { $('#view').innerHTML = empty(t('empty_t'), t('empty_d')); return; }
+  let tiles = '';
+  if (g) tiles += tile(t('t_clicks'), fmt(g.clicks), g.clicks_d, false, t('vsprev'), spark(G.map(r=>r.clicks))) +
+                  tile(t('t_impr'), fmt(g.impressions), g.impressions_d, false, `CTR ${dec(g.ctr,2)} %`, spark(G.map(r=>r.impressions))) +
+                  tile(t('t_pos'), dec(g.position), g.position_d, true, t('lowerbetter'), spark(G.map(r=>r.position), true));
+  if (a) {
+    tiles += tile(t('t_sessions'), fmt(a.sessions), a.sessions_d, false, t('users',{n:fmt(a.users)}), spark(A.map(r=>r.sessions))) +
+             tile(t('t_organic'), fmt(a.organic), a.organic_d, false, t('ofall',{n:dec(a.organic_share,1)}), spark(A.map(r=>r.organic))) +
+             tile(t('t_ai'), fmt(a.ai), a.ai_d, false, t('aisub'), spark(A.map(r=>r.ai)));
+    if (a.organic_revenue !== undefined) tiles += tile(t('t_orgrev'), fmt(a.organic_revenue), a.organic_revenue_d, false, t('oftotal',{n:fmt(a.revenue)}), spark(A.map(r=>r.revenue)));
+  }
+  if (au) {
+    const col = au.score >= 80 ? 'var(--good)' : au.score >= 60 ? 'var(--warn)' : 'var(--crit)', lbl = au.score >= 80 ? t('h_ok') : au.score >= 60 ? t('h_mid') : t('h_bad');
+    const R = 44, C = 2*Math.PI*R;
+    tiles += `<div class="card tile" style="flex-direction:row;align-items:center;gap:16px"><div class="ring"><svg viewBox="0 0 104 104" width="104" height="104"><circle cx="52" cy="52" r="${R}" fill="none" stroke="var(--grid)" stroke-width="9"/><circle cx="52" cy="52" r="${R}" fill="none" stroke="${col}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${C*au.score/100} ${C}" transform="rotate(-90 52 52)"/></svg><b>${Math.round(au.score)}</b></div>
+      <div><div class="l">${t('t_health')}</div><div style="font-weight:700;font-size:16px">${lbl}</div><div class="hint">${t('errs_warns',{e:au.counts.error||0,w:au.counts.warning||0})}<br>${t('pages_crawled',{n:au.pages})}</div></div></div>`;
+  }
+  let h = `<div class="grid t4">${tiles}</div>`;
+  if (g) h += `<div class="grid t3" style="margin-top:16px">${card('c-clicks',t('c_clicks'),t('c_clicks_s'),'sm')}${card('c-impr',t('c_impr'),t('c_impr_s'),'sm')}${card('c-pos',t('c_pos'),t('c_pos_s'),'sm')}</div>`;
+  if (a) h += `<div class="grid t21" style="margin-top:16px">${card('c-ses',t('c_ses'),t('c_ses_s'),'', `<div class="legend"><span><i style="background:var(--s1)"></i>${t('lg_all')}</span><span><i style="background:var(--s3)"></i>${t('lg_org')}</span></div>`)}
+      <div class="card"><div class="ch"><div class="grow"><h3>${t('c_chan')}</h3><div class="sub">${t('c_chan_s')}</div></div></div>${hbars(o.channels,'channel','sessions',i=>chName(i.channel))}</div></div>
+      <div class="grid t3" style="margin-top:16px">${card('c-ai',t('c_ai'),t('c_ai_s'),'sm')}
+      <div class="card"><div class="ch"><div class="grow"><h3>${t('c_dev')}</h3><div class="sub">${t('unit_clicks')}</div></div></div>${hbars(br.device,'value','clicks',i=>devName(i.value))}</div>
+      <div class="card"><div class="ch"><div class="grow"><h3>${t('c_ctry')}</h3><div class="sub">${t('unit_clicks')}</div></div></div>${hbars(br.country,'value','clicks',i=>ctryName(i.value))}</div></div>`;
+  if (opp && opp.striking_distance && opp.striking_distance.length) {
+    const top = opp.striking_distance.slice(0,6);
+    h += `<div class="card" style="margin-top:16px"><div class="ch"><div class="grow"><h3>${t('qw_t')}</h3><div class="sub">${t('qw_s')}</div></div><button class="tbtn" onclick="go('opps')">${t('qw_all')}</button></div>${table([{h:t('col_kw'),k:'query'},{h:t('col_pos'),k:'position',n:1,f:posChip},{h:t('col_impr'),k:'impressions',n:1,f:r=>fmt(r.impressions)},{...mbar('potential_clicks',Math.max(...top.map(r=>r.potential_clicks)),v=>'+'+fmt(v)),h:t('col_est')},urlCell('page')], top)}</div>`;
+  }
+  $('#view').innerHTML = h; wireTwins();
+  const dates = G.map(r=>r.date), ga = A.map(r=>r.date);
+  const twinG = (key,label) => ({cols:[{h:'Date',k:'date',f:r=>esc(dshort(r.date))},{h:label,k:key,n:1,f:r=>nf(r[key],1)}], rows:G});
+  if (g) {
+    chart('c-clicks',{type:'line',data:{labels:dates,datasets:[line(t('c_clicks'),'--s1',smooth(G.map(r=>r.clicks)))]},options:baseOpts()}, twinG('clicks',t('c_clicks')));
+    chart('c-impr',{type:'line',data:{labels:dates,datasets:[line(t('c_impr'),'--s1',smooth(G.map(r=>r.impressions)))]},options:baseOpts()}, twinG('impressions',t('c_impr')));
+    const po = baseOpts(); po.scales.y.reverse = true; po.scales.y.beginAtZero = false; po.scales.y.ticks.callback = v => dec(v);
+    chart('c-pos',{type:'line',data:{labels:dates,datasets:[line(t('c_pos'),'--s1',smooth(G.map(r=>r.position)))]},options:po}, twinG('position',t('c_pos')));
+  }
+  if (a) {
+    const tw = {cols:[{h:'Date',k:'date',f:r=>esc(dshort(r.date))},{h:t('lg_all'),k:'sessions',n:1},{h:t('lg_org'),k:'organic',n:1},{h:'AI',k:'ai',n:1}], rows:A};
+    chart('c-ses',{type:'line',data:{labels:ga,datasets:[line(t('lg_all'),'--s1',smooth(A.map(r=>r.sessions))),line(t('lg_org'),'--s3',smooth(A.map(r=>r.organic)))]},options:baseOpts()}, tw);
+    chart('c-ai',{type:'line',data:{labels:ga,datasets:[line(t('t_ai'),'--s5',smooth(A.map(r=>r.ai)))]},options:baseOpts()}, {cols:[tw.cols[0],tw.cols[3]],rows:A});
+  }
+};
+window.go = k => { state.tab = k; location.hash = k; tabs(); render(); };
+
+V.queries = async () => {
+  $('#view').innerHTML = `<div class="card"><div class="ch"><div class="grow"><h3>${t('q_t')}</h3><div class="sub">${t('q_s')}</div></div><input type="search" id="q" placeholder="${t('q_ph')}"></div><div id="tbl"></div></div>`;
+  const load = async () => { const rows = await api('queries', {search:$('#q').value}); const mx = Math.max(1,...rows.map(r=>r.clicks));
+    $('#tbl').innerHTML = table([{h:t('col_kw'),k:'query'},{...mbar('clicks',mx),h:t('col_clicks')},{h:t('col_dclicks'),k:'clicks_d',n:1,f:r=>delta(r.clicks_d,false,'')},{h:t('col_impr'),k:'impressions',n:1,f:r=>fmt(r.impressions)},
+      {h:t('col_ctr'),k:'ctr',n:1,f:r=>dec(r.ctr,2)+' %'},{h:t('col_pos'),k:'position',n:1,f:posChip},{h:t('col_dpos'),k:'position_d',n:1,s:r=>r.position_d??0,f:r=>delta(r.position_d,true,'')},urlCell('page')], rows); };
+  let tm; $('#q').oninput = () => { clearTimeout(tm); tm = setTimeout(load, 250); }; await load();
+};
+
+V.pages = async () => {
+  $('#view').innerHTML = `<div class="card"><div class="ch"><div class="grow"><h3>${t('p_t')}</h3><div class="sub">${t('p_s')}</div></div><input type="search" id="q" placeholder="${t('p_ph')}"></div><div id="tbl"></div></div>`;
+  const load = async () => { const rows = await api('pages', {search:$('#q').value}); const mx = Math.max(1,...rows.map(r=>r.clicks)); const rev = rows.length && rows[0].organic_revenue !== undefined;
+    const cols = [urlCell('page'),{...mbar('clicks',mx),h:t('col_clicks')},{h:t('col_dclicks'),k:'clicks_d',n:1,f:r=>delta(r.clicks_d,false,'')},{h:t('col_impr'),k:'impressions',n:1,f:r=>fmt(r.impressions)},
+      {h:t('col_pos'),k:'position',n:1,f:posChip},{h:t('col_kws'),k:'queries',n:1},{h:t('col_osess'),k:'organic_sessions',n:1,f:r=>fmt(r.organic_sessions)}];
+    if (rev) cols.push({h:t('col_orev'),k:'organic_revenue',n:1,f:r=>fmt(r.organic_revenue)});
+    $('#tbl').innerHTML = table(cols, rows); };
+  let tm; $('#q').oninput = () => { clearTimeout(tm); tm = setTimeout(load, 250); }; await load();
+};
+
+V.opps = async () => {
+  const o = await api('opportunities');
+  if (!o.striking_distance) { $('#view').innerHTML = empty(t('empty_t')); return; }
+  const s = o.summary, mx = a => Math.max(1, ...a.map(r=>r.potential_clicks));
+  const act = (big, title, desc, anchor) => `<div class="card act" onclick="document.getElementById('${anchor}').scrollIntoView({behavior:'smooth',block:'start'})"><div class="big">${big}</div><div class="t">${title}</div><div class="d">${desc}</div></div>`;
+  const sec = (id, title, sub, body) => `<div class="card" id="${id}" style="scroll-margin-top:130px"><div class="ch"><div class="grow"><h3>${title}</h3><div class="sub">${sub}</div></div></div>${body}</div>`;
+  const red = key => ({n:1,k:key,f:r=>`<span class="delta bad">−${nf(r[key])}</span>`});
+  $('#view').innerHTML = `<div class="grid t4">
+    ${act('+'+fmt(s.striking_potential),t('o_strike'),t('o_strike_d'),'o-strike')}${act('+'+fmt(s.ctr_potential),t('o_ctr'),t('o_ctr_d'),'o-ctr')}
+    ${act(o.cannibalisation.length,t('o_cann'),t('o_cann_d'),'o-cann')}${act(o.declining_pages.length,t('o_decl'),t('o_decl_d'),'o-decl')}</div>
+  <div class="stack" style="margin-top:16px"><div class="grid t2">
+  ${sec('o-strike',t('os_strike'),t('os_strike_s'),table([{h:t('col_kw'),k:'query'},{h:t('col_poss'),k:'position',n:1,f:posChip},{h:t('col_imprs'),k:'impressions',n:1,f:r=>fmt(r.impressions)},{...mbar('potential_clicks',mx(o.striking_distance),v=>'+'+fmt(v)),h:t('col_gainest')},urlCell('page')], o.striking_distance))}
+  ${sec('o-ctr',t('os_ctr'),t('os_ctr_s'),table([{h:t('col_kw'),k:'query'},{h:t('col_poss'),k:'position',n:1,f:posChip},{h:t('col_ctr'),k:'ctr',n:1,f:r=>`${dec(r.ctr,2)} % <span class="hint" style="white-space:nowrap">/ ${dec(r.expected_ctr,0)} %</span>`},{...mbar('potential_clicks',mx(o.low_ctr),v=>'+'+fmt(v)),h:t('col_gainest')},urlCell('page')], o.low_ctr))}
+  </div><div class="grid t2">
+  ${sec('o-cann',t('os_cann'),t('os_cann_s'),table([{h:t('col_kw'),k:'query'},{h:t('col_imprs'),k:'impressions',n:1,f:r=>fmt(r.impressions)},{h:t('col_comp'),nosort:1,s:r=>r.pages.length,f:r=>r.pages.map(p=>`<div><a class="url" href="${esc(p.page)}" target="_blank" rel="noopener">${esc(short(p.page))}</a> <span class="chip">${t('pos_n',{p:dec(p.position),c:p.clicks})}</span></div>`).join('')}], o.cannibalisation))}
+  ${sec('o-decl',t('os_decl'),t('os_decl_s'),table([urlCell('page'),{h:t('col_before'),k:'before',n:1},{h:t('col_now'),k:'now',n:1},{...red('lost'),h:t('col_lost')}], o.declining_pages))}
+  </div><div class="grid t3">
+  ${sec('o-rise',t('os_rise'),'',table([{h:t('col_kw'),k:'query'},{h:t('col_before'),k:'before',n:1},{h:t('col_now'),k:'now',n:1},{h:t('col_gain'),k:'gain',n:1,f:r=>`<span class="delta good">+${nf(r.gain)}</span>`}], o.rising_queries))}
+  ${sec('o-new',t('os_new'),t('os_new_s'),table([{h:t('col_kw'),k:'query'},{h:t('col_imprs'),k:'impressions',n:1,f:r=>fmt(r.impressions)},{h:t('col_cl'),k:'clicks',n:1},{h:t('col_poss'),k:'position',n:1,f:posChip}], o.new_queries))}
+  ${sec('o-lost',t('os_lost'),'',table([{h:t('col_kw'),k:'query'},{h:t('col_before'),k:'before',n:1},{h:t('col_now'),k:'now',n:1},{...red('lost'),h:t('col_lost')}], o.lost_queries))}
+  </div>${sec('o-zero',t('os_zero'),t('os_zero_s'),table([urlCell('page'),{h:t('col_impr'),k:'impressions',n:1,f:r=>fmt(r.impressions)}], o.zero_click_pages))}</div>`;
+};
+
+V.audit = async () => {
+  const a = await api('audit');
+  if (!a.run) { $('#view').innerHTML = empty(t('a_empty_t'), t('a_empty_d')); return; }
+  const r = a.run, dd = a.prev_score != null ? +(r.score - a.prev_score).toFixed(1) : null;
+  const tot = {error:0,warning:0,notice:0}; a.types.forEach(x => tot[x.severity] += x.n);
+  const sum = tot.error + tot.warning + tot.notice || 1, col = {error:'var(--crit)',warning:'var(--warn)',notice:'var(--muted)'};
+  const mx = Math.max(1, ...a.types.map(x=>x.n));
+  $('#view').innerHTML = `<div class="grid t21"><div class="card"><div class="ch"><div class="grow"><h3>${t('a_t')}</h3><div class="sub">${t('a_s',{p:r.pages,d:esc(dts(Date.parse(r.finished)/1000)),s:dec(r.score)})} ${dd!=null?delta(dd,false,' b.'.replace('b.',lang==='cs'?'b.':'pts')):''}</div></div></div>
+    <div class="seg-bar">${['error','warning','notice'].map(s=>tot[s]?`<i style="width:${tot[s]/sum*100}%;background:${col[s]}"></i>`:'').join('')}</div>
+    <div class="legend">${['error','warning','notice'].map(s=>`<span>${sevl(s)} <b style="color:var(--ink)">${tot[s]}</b></span>`).join('')}</div>
+    <div style="margin-top:8px">${table([{h:t('a_issue'),k:'type',f:x=>esc(issueName(x.type))},{h:t('a_sev'),k:'severity',f:x=>sevl(x.severity)},{...mbar('n',mx),h:t('a_pages')},{h:t('a_vslast'),k:'delta',n:1,s:x=>x.delta??0,f:x=>delta(x.delta,true,'')}], a.types, {rowAttr:x=>` class="clk" data-type="${esc(x.type)}"`, after:wireRows})}</div></div>
+    <div class="card" id="detail"><div class="ch"><div class="grow"><h3>${t('a_aff')}</h3><div class="sub">${t('a_sel')}</div></div></div><div class="empty">${t('a_none')}</div></div></div>`;
+  function wireRows(){ document.querySelectorAll('tr.clk').forEach(tr => tr.onclick = async () => {
+    const rows = await api('audit/detail', {type: tr.dataset.type});
+    $('#detail').innerHTML = `<div class="ch"><div class="grow"><h3>${esc(issueName(tr.dataset.type))}</h3><div class="sub">${t('a_n',{n:rows.length})}</div></div></div>` + table([{h:'URL',k:'url',f:x=>`<a class="url" href="${esc(x.url)}" target="_blank" rel="noopener" style="max-width:420px">${esc(x.url)}</a>`},{h:t('col_detail'),k:'detail'}], rows); }); }
+};
+
+V.ai = async () => {
+  const a = await api('ai');
+  const names = a.sources.map(s=>s.source), colorOf = n => ENTITY[n] || '--s8';
+  const bots = a.checks.filter(c=>c.key.startsWith('bot:')), other = a.checks.filter(c=>!c.key.startsWith('bot:'));
+  const pct = s => /^\d+%$/.test(s) ? parseInt(s) : null, total = a.sources.reduce((x,s)=>x+s.sessions,0);
+  const showRev = a.sources.length && a.sources[0].revenue !== undefined;
+  $('#view').innerHTML = `<div class="card" style="margin-bottom:16px"><div class="ch" style="margin:0"><div class="grow"><h3>${t('g_t')}</h3><div class="sub">${t('g_s')}</div></div></div></div>
+  <div class="grid t21">${card('c-ai',t('g_chart'),t('g_chart_s'),'lg', `<div class="legend">${names.map(n=>`<span><i class="box" style="background:var(${colorOf(n)})"></i>${esc(n)}</span>`).join('')}</div>`)}
+  <div class="card"><div class="ch"><div class="grow"><h3>${t('g_share')}</h3><div class="sub">${t('g_share_s',{n:fmt(total)})}</div></div></div>${a.sources.length?a.sources.map(s=>`<div class="hb"><span class="name">${esc(s.source)}</span><span class="track"><div class="fill" style="width:${s.sessions/a.sources[0].sessions*100}%;background:var(${colorOf(s.source)})"></div></span><span class="val">${fmt(s.sessions)}</span></div><div class="hint" style="margin:-2px 0 6px;padding-left:calc(32% + 10px)">${delta(s.delta)} · ${nf(s.conversions)} ${t('conv')}${showRev?` · ${fmt(s.revenue)} ${t('rev')}`:''}</div>`).join(''):`<div class="empty">${t('g_none')}</div>`}</div></div>
+  <div class="grid t2" style="margin-top:16px"><div class="card"><div class="ch"><div class="grow"><h3>${t('g_land')}</h3></div></div>${table([urlCell('page'),{h:t('col_sessions'),k:'sessions',n:1}], a.landing)}</div>
+  <div class="card"><div class="ch"><div class="grow"><h3>${t('g_bots')}</h3><div class="sub">${t('g_bots_s')}</div></div></div>
+  ${bots.length?`<div class="botgrid">${bots.map(b=>`<div class="bot"><span class="dot ${b.status==='allowed'?'ok':'skip'}">${b.status==='allowed'?'✓':'✕'}</span><span><b>${esc(b.key.slice(4))}</b><br><span class="hint">${t(b.status)}</span></span></div>`).join('')}</div>`:`<div class="empty">${t('g_runaudit')}</div>`}</div></div>
+  <div class="card" style="margin-top:16px"><div class="ch"><div class="grow"><h3>${t('g_ready')}</h3><div class="sub">${t('g_ready_s')}</div></div></div>
+  ${other.length?other.map(c=>{const p=pct(c.status); return `<div class="hb" style="grid-template-columns:minmax(120px,22%) 1fr auto"><span class="name">${esc(c.key)}</span>${p!=null?`<span class="track" style="background:var(--wash);border-radius:4px"><div class="fill" style="width:${p}%"></div></span><span class="val">${p} %</span>`:`<span></span><span class="val"><span class="sevl"><span class="dot ${c.status==='present'?'ok':'warning'}">${c.status==='present'?'✓':'!'}</span>${esc(t(c.status))}</span></span>`}</div>`}).join(''):`<div class="empty">${t('g_runfirst')}</div>`}</div>`;
+  wireTwins();
+  if (a.series.length) {
+    const rows = a.series.map(r => ({date:r.date, ...Object.fromEntries(names.map(n=>[n, r[n]||0]))}));
+    const o = baseOpts(); o.scales.x.stacked = true; o.scales.y.stacked = true;
+    chart('c-ai',{type:'bar',data:{labels:a.series.map(r=>r.date),datasets:names.map(n=>({label:n,data:a.series.map(r=>r[n]||0),backgroundColor:css(colorOf(n)),borderColor:css('--surface'),borderWidth:{top:2},borderRadius:2,stack:'s'}))},options:o},
+      {cols:[{h:'Date',k:'date',f:r=>esc(dshort(r.date))},...names.map(n=>({h:n,k:n,n:1}))], rows});
+  } else { $('#p-c-ai').innerHTML = `<div class="empty">${t('g_none')}</div>`; }
+};
+
+V.ideas = async () => {
+  const rows = await api('ideas'), nr = rows.filter(r=>!r.ranking).length;
+  $('#view').innerHTML = `<div class="card"><div class="ch"><div class="grow"><h3>${t('i_t')}</h3><div class="sub">${t('i_s',{n:nr,m:rows.length})}</div></div></div>
+    ${table([{h:t('i_idea'),k:'idea'},{h:t('i_type'),k:'kind',f:r=>`<span class="chip">${t('k_'+r.kind)}</span>`},{h:t('i_seed'),k:'seed'},{h:t('i_status'),k:'ranking',s:r=>r.ranking?1:0,f:r=>r.ranking?`<span class="sevl"><span class="dot ok">✓</span>${t('i_rank')}</span>`:`<span class="sevl"><span class="dot warning">!</span>${t('i_norank')}</span>`}], rows)}</div>`;
+};
+
+/* ---- settings (admin) */
+V.settings = async () => {
+  if (!isAdmin()) { $('#view').innerHTML = empty(t('noaccess')); return; }
+  if (!state.me.auth_enabled) { $('#view').innerHTML = `<div class="card"><div class="empty"><b>${t('off_t')}</b>${t('off_d')}</div></div>`; return; }
+  const [info, users, log] = await Promise.all([req('/api/admin/info'), req('/api/admin/users'), req('/api/admin/log')]);
+  state.settings = {info, users};
+  const chips = arr => arr.map(x => `<span class="chip">${esc(x)}</span>`).join('');
+  const siteName = id => (info.sites.find(s=>s.id===id)||{}).name || id;
+  const clients = users.filter(u => u.role !== 'admin');
+  const cols = [
+    {h:t('u_user'), s:u=>u.email, f:u=>`<b>${esc(u.name || u.email)}</b>${u.name?`<br><span class="hint">${esc(u.email)}</span>`:''}`},
+    {h:t('u_sites'), nosort:1, f:u=>`<div class="chips">${u.sites.includes('*')?`<span class="chip">${t('u_all')}</span>`:chips(u.sites.map(siteName))}</div>`},
+    {h:t('u_secs'), nosort:1, f:u=>`<div class="chips">${chips(u.sections.map(s=>t('nav_'+s)))}</div>`},
+    {h:t('u_rev'), s:u=>u.show_revenue?1:0, f:u=>u.show_revenue?t('u_rev_y'):t('u_rev_n')},
+    {h:t('u_state'), s:u=>u.active?1:0, f:u=>u.active?`<span class="sevl"><span class="dot ok">✓</span>${t('u_on')}</span>`:`<span class="sevl"><span class="dot error">✕</span>${t('u_off')}</span>`},
+    {h:t('u_last'), s:u=>u.last_login||0, f:u=>esc(dts(u.last_login))},
+    {h:t('u_sess'), n:1, k:'sessions'},
+    {h:'', nosort:1, f:u=>`<div class="acts"><button class="btn sm" data-act="edit" data-email="${esc(u.email)}">${t('u_edit')}</button><button class="btn sm" data-act="link" data-email="${esc(u.email)}">${t('u_link')}</button><button class="btn sm" data-act="revoke" data-email="${esc(u.email)}">${t('u_revoke')}</button><button class="btn sm danger" data-act="del" data-email="${esc(u.email)}">${t('u_del')}</button></div>`}];
+  $('#view').innerHTML = `<div class="stack">
+  <div class="grid t2"><div class="card"><div class="ch"><div class="grow"><h3>${t('s_mail')}</h3></div></div>
+    <div class="sevl"><span class="dot ${info.smtp?'ok':'warning'}">${info.smtp?'✓':'!'}</span>${info.smtp?t('s_smtp_ok'):''}</div>${info.smtp?'':`<div class="hint" style="margin-top:6px">${t('s_smtp_no')}</div>`}
+    <div class="hint" style="margin-top:10px">${t('s_base')}: <b style="color:var(--ink)">${esc(info.base_url)}</b></div>
+    ${info.https?'':`<div class="warnbox">${t('s_https')}</div>`}
+    <div class="hint" style="margin-top:10px">${t('s_sess',{d:info.session_days,m:info.token_minutes})}</div>
+    ${info.smtp?`<div style="margin-top:12px"><button class="btn sm" id="test-mail">${t('s_test')}</button></div>`:''}</div>
+  <div class="card"><div class="ch"><div class="grow"><h3>${t('s_admins')}</h3></div></div><div class="chips">${chips(info.admins)}</div></div></div>
+  <div class="card"><div class="ch"><div class="grow"><h3>${t('s_users')}</h3></div><button class="btn primary" id="add-user">${t('s_add')}</button></div>${table(cols, clients, {empty:t('u_none')})}</div>
+  <div class="card"><div class="ch"><div class="grow"><h3>${t('l_t')}</h3></div></div>${table([{h:t('l_time'),s:l=>l.ts,f:l=>esc(dts(l.ts))},{h:t('l_user'),k:'email'},{h:t('l_event'),k:'event',f:l=>esc(I18N[lang]['ev_'+l.event]||l.event)},{h:t('l_ip'),k:'ip'},{h:t('l_detail'),k:'detail'}], log)}</div></div>`;
+  $('#add-user').onclick = () => userDialog(null);
+  const tm = $('#test-mail'); if (tm) tm.onclick = async () => { try { await post('admin/test-email'); toast(t('s_test_ok',{e:state.me.email})); } catch(e) { toast((e.data&&e.data.error)||e.message); } };
+  $('#view').onclick = async ev => {
+    const b = ev.target.closest('button[data-act]'); if (!b) return; const email = b.dataset.email, act = b.dataset.act;
+    try {
+      if (act === 'edit') return userDialog(users.find(u=>u.email===email));
+      if (act === 'link') { const r = await post('admin/users/link', {email}); return r.sent ? toast(t('d_sent',{e:email})) : showLink(r); }
+      if (act === 'revoke' && confirm(t('u_confirm_revoke',{e:email}))) { await post('admin/users/revoke', {email}); toast(t('d_saved')); return render(); }
+      if (act === 'del' && confirm(t('u_confirm_del',{e:email}))) { await post('admin/users/delete', {email}); toast(t('d_saved')); return render(); }
+    } catch(e) { toast((e.data&&e.data.error)||e.message); }
+  };
+};
+function showLink(r) {
+  const dlg = $('#dlg');
+  dlg.innerHTML = `<div class="dlg"><h3>${t('s_users')}</h3>${r.error?`<div class="warnbox">${esc(r.error)}</div>`:''}<div class="hint">${t('d_copy_h',{m:state.settings.info.token_minutes})}</div>
+    <div class="linkbox"><span id="lk">${esc(r.link||'')}</span><button class="btn sm" id="cp">${t('d_copy')}</button></div><div class="row2"><button class="btn" id="cl">OK</button></div></div>`;
+  dlg.showModal(); $('#cl').onclick = () => dlg.close();
+  $('#cp').onclick = async () => { try { await navigator.clipboard.writeText(r.link); toast(t('d_copied')); } catch(e) { const rg = document.createRange(); rg.selectNode($('#lk')); getSelection().removeAllRanges(); getSelection().addRange(rg); } };
+}
+function userDialog(u) {
+  const info = state.settings.info, dlg = $('#dlg'), edit = !!u;
+  const sel = u ? u : {email:'', name:'', sites:[], sections:['overview','queries'], show_revenue:false, active:true};
+  const sites = info.sites.map(s => `<label><input type="checkbox" name="site" value="${esc(s.id)}" ${sel.sites.includes(s.id)?'checked':''}> ${esc(s.name)}</label>`).join('') || `<span class="hint">${t('d_nosites')}</span>`;
+  const secs = info.sections.map(s => `<label><input type="checkbox" name="sec" value="${s}" ${sel.sections.includes(s)?'checked':''}> ${t('nav_'+s)}</label>`).join('');
+  dlg.innerHTML = `<form class="dlg" id="uf" method="dialog"><h3>${edit?t('d_edit'):t('d_add')}</h3>
+    <label class="f">${t('d_email')}<input type="email" id="u-email" required value="${esc(sel.email)}" ${edit?'disabled':''}></label>
+    <label class="f">${t('d_name')}<input type="text" id="u-name" value="${esc(sel.name)}" maxlength="100"></label>
+    <div class="f"><b style="font-size:13px">${t('d_sites')}</b><div class="checks" style="margin-top:6px">${sites}</div></div>
+    <div class="f"><b style="font-size:13px">${t('d_secs')}</b><div class="checks" style="margin-top:6px">${secs}</div></div>
+    <div><div class="checks"><label><input type="checkbox" id="u-rev" ${sel.show_revenue?'checked':''}> ${t('d_rev')}</label></div><div class="hint" style="margin-top:4px">${t('d_rev_h')}</div></div>
+    ${edit?`<div class="checks"><label><input type="checkbox" id="u-active" ${sel.active?'checked':''}> ${t('d_active')}</label></div>`:`<div class="checks"><label><input type="checkbox" id="u-invite" checked> ${t('d_invite')}</label></div>`}
+    <div class="row2"><button type="button" class="btn" id="u-cancel">${t('d_cancel')}</button><button class="btn primary" id="u-save">${t('d_save')}</button></div></form>`;
+  dlg.showModal(); $('#u-cancel').onclick = () => dlg.close();
+  $('#uf').onsubmit = async ev => { ev.preventDefault(); const body = {email:$('#u-email').value, name:$('#u-name').value,
+      sites:[...dlg.querySelectorAll('input[name=site]:checked')].map(x=>x.value), sections:[...dlg.querySelectorAll('input[name=sec]:checked')].map(x=>x.value),
+      show_revenue:$('#u-rev').checked, active: edit ? $('#u-active').checked : true, invite: !edit && $('#u-invite').checked};
+    try { const r = await post('admin/users', body); dlg.close();
+      if (body.invite) { if (r.sent) toast(t('d_sent',{e:body.email})); else showLink(r); } else toast(t('d_saved'));
+      render();
+    } catch(e) { toast((e.data&&e.data.error)||e.message); } };
+}
+
+/* ------------------------------------------------------------ shell */
+async function render() {
+  const v = $('#view'), seq = ++state.loadSeq; v.classList.add('busy'); killCharts();   // hold previous render, no skeleton flash
+  try {
+    if (!state.site && state.tab !== 'settings') { v.innerHTML = empty(t('nosite')); }
+    else if (!has(state.tab)) { v.innerHTML = empty(t('noaccess')); }
+    else await V[state.tab]();
+  } catch(e) { if (seq === state.loadSeq) v.innerHTML = empty(t('err_t'), e.status === 403 ? t('noaccess') : esc(e.message)); console.error(e); }
+  if (seq === state.loadSeq) v.classList.remove('busy');
+}
+function tabs() { $('#tabs').innerHTML = TABS.filter(has).map(k=>`<a data-k="${k}" class="${k===state.tab?'on':''}">${t('nav_'+k)}</a>`).join('');
+  document.querySelectorAll('#tabs a').forEach(a=>a.onclick=()=>go(a.dataset.k)); }
+function chrome() {   // all translatable static chrome
+  document.documentElement.lang = lang;
+  $('#b-menu').textContent = t('b_menu'); $('#b-sync').textContent = t('b_sync'); $('#b-sync').title = t('tip_sync'); $('#b-crawl').textContent = t('b_crawl'); $('#b-crawl').title = t('tip_crawl');
+  $('#b-ideas').textContent = t('b_ideas'); $('#b-ideas').title = t('tip_ideas'); $('#logout').textContent = t('logout');
+  $('#demo').innerHTML = t('demo');
+  $('#ranges').innerHTML = RANGES.map(d=>`<button data-k="${d}" class="${d===state.days?'on':''}">${t('r'+d)}</button>`).join('');
+  document.querySelectorAll('#ranges button').forEach(b=>b.onclick=()=>{ state.days = +b.dataset.k; chrome(); render(); });
+  document.querySelectorAll('#langs button').forEach(b=>{ b.classList.toggle('on', b.dataset.k===lang); b.onclick=()=>{ lang = b.dataset.k; try { localStorage.setItem('lang', lang); } catch(e) {} chrome(); tabs(); render(); }; });
+}
+async function poll() {
+  if (!isAdmin() || !state.site) return;
+  let s; try { s = await api('status'); } catch(e) { return; }
+  const j = Object.entries(s.jobs||{}), running = j.filter(([k,v])=>v.state==='running');
+  $('#jobmsg').innerHTML = running.length ? `<span class="spin"></span> ${esc(running.map(([k])=>k.split(':')[1]).join(', '))}…` : (j.length ? esc(j.map(([k,v])=>k.split(':')[1]+': '+v.state+(v.state==='error'?' ('+v.msg+')':'')).join(' · ')) : '');
+  if (running.length) setTimeout(poll, 3000); else if (poll.was) { poll.was = false; render(); } poll.was = poll.was || running.length > 0;
+}
+async function run(job) { try { const j = await post('run/'+job+'?site='+encodeURIComponent(state.site)); if (!j.started) $('#jobmsg').textContent = j.reason || '…'; } catch(e) { $('#jobmsg').textContent = (e.data && e.data.reason) || e.message; return; } poll.was = true; poll(); }
+function setTheme(th) { if (th) document.documentElement.dataset.theme = th; else delete document.documentElement.dataset.theme; }
+(async () => {
+  try { setTheme(localStorage.getItem('theme')); } catch(e) {}
+  $('#theme').onclick = () => { const dark = document.documentElement.dataset.theme ? document.documentElement.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme:dark)').matches;
+    const th = dark ? 'light' : 'dark'; setTheme(th); try { localStorage.setItem('theme', th); } catch(e) {} render(); };
+  state.me = await req('/api/me');
+  if (state.me.demo) $('#demo').style.display = 'block';
+  if (state.me.auth_enabled) { $('#who').textContent = state.me.name || state.me.email; $('#who').title = state.me.email; $('#logout').style.display = ''; $('#logout').title = state.me.email; 
+    $('#logout').onclick = async () => { try { await post('../auth/logout'); } catch(e) {} location.href = '/login'; }; }
+  if (isAdmin()) $('#admin-btns').style.display = 'block';
+  document.addEventListener('click', e => { const d = $('#admin-btns'); if (d.open && (!d.contains(e.target) || e.target.closest('.pop button'))) d.open = false; });
+  const sl = state.me.site_list; let saved = null; try { saved = localStorage.getItem('site'); } catch(e) {}
+  state.site = (sl.find(s=>s.id===saved) || sl[0] || {}).id || null;
+  $('#site').innerHTML = sl.map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
+  if (state.site) $('#site').value = state.site; else $('#site').style.display = 'none';
+  $('#site').onchange = e => { state.site = e.target.value; try { localStorage.setItem('site', state.site); } catch(x) {} poll(); render(); };
+  const h = location.hash.slice(1); state.tab = (TABS.includes(h) && has(h)) ? h : (TABS.find(has) || 'overview');
+  $('#b-sync').onclick = () => run('sync'); $('#b-crawl').onclick = () => run('crawl'); $('#b-ideas').onclick = () => run('ideas');
+  chrome(); tabs(); render(); poll();
+})();
+</script>
+</body>
+</html>

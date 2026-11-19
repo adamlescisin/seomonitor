@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>SEO Compass</title>
+<style>
+:root{color-scheme:light dark;--page:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink2:#52514e;--ring:rgba(11,11,11,.12);--s1:#2a78d6;--crit:#b32f2f;--good:#006300}
+@media(prefers-color-scheme:dark){:root{--page:#0d0d0d;--surface:#1a1a19;--ink:#f0efec;--ink2:#c3c2b7;--ring:rgba(255,255,255,.12);--s1:#3987e5;--crit:#ec6a6a;--good:#0ca30c}}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--page);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;padding:20px}
+.card{width:100%;max-width:400px;background:var(--surface);border:1px solid var(--ring);border-radius:18px;padding:32px 28px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;margin-bottom:22px}
+.logo{width:30px;height:30px;border-radius:9px;background:var(--s1);display:grid;place-items:center}
+h1{font-size:20px;margin:0 0 6px;letter-spacing:-.3px}p{margin:0 0 18px;color:var(--ink2)}
+label{display:block;font-size:13px;font-weight:600;margin-bottom:6px}
+input{width:100%;font:inherit;padding:11px 13px;border-radius:10px;border:1px solid var(--ring);background:transparent;color:var(--ink)}
+input:focus{outline:2px solid var(--s1);outline-offset:1px}
+button{width:100%;margin-top:14px;font:inherit;font-weight:600;padding:12px;border:0;border-radius:10px;background:var(--s1);color:#fff;cursor:pointer}
+button:disabled{opacity:.6;cursor:default}
+.msg{margin-top:16px;font-size:14px;padding:11px 13px;border-radius:10px;background:rgba(127,127,127,.12)}
+.msg.err{color:var(--crit)}.msg.ok{color:var(--good)}
+.lang{position:fixed;top:14px;right:16px;font-size:13px}.lang a{color:var(--ink2);cursor:pointer;margin-left:8px;text-decoration:none}.lang a.on{color:var(--ink);font-weight:700}
+.foot{margin-top:18px;font-size:12px;color:var(--ink2)}
+</style>
+</head>
+<body>
+<div class="lang"><a data-l="cs">CZ</a><a data-l="en">EN</a></div>
+<div class="card">
+  <div class="brand"><span class="logo"><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M10.5 5.5 9 9 5.5 10.5 7 7z" fill="#fff"/></svg></span>SEO Compass</div>
+  <div id="login">
+    <h1 data-t="title"></h1><p data-t="lead"></p>
+    <form id="f"><label for="email" data-t="email"></label><input id="email" type="email" autocomplete="email" required autofocus placeholder="jmeno@firma.cz">
+    <button id="go" data-t="send"></button></form>
+  </div>
+  <div id="verify" style="display:none">
+    <h1 data-t="vtitle"></h1><p data-t="vlead"></p>
+    <button id="vgo" data-t="vbtn"></button>
+  </div>
+  <div id="msg" class="msg" style="display:none"></div>
+  <div class="foot" data-t="foot"></div>
+</div>
+<script>
+const T = {
+ cs:{title:'Přihlášení',lead:'Zadejte svůj e-mail. Pošleme vám jednorázový odkaz, heslo není potřeba.',email:'E-mail',send:'Poslat přihlašovací odkaz',
+     sent:'Pokud je tato adresa oprávněná, přišel na ni přihlašovací odkaz. Zkontrolujte schránku (i složku Spam). Odkaz platí krátkou dobu a lze ho použít jen jednou.',
+     wait:'Odesílám…',err:'Něco se nepovedlo. Zkuste to prosím znovu.',vtitle:'Potvrzení přihlášení',vlead:'Klepnutím na tlačítko dokončíte přihlášení v tomto prohlížeči.',vbtn:'Přihlásit se',
+     bad:'Odkaz je neplatný, už byl použit nebo vypršel. Požádejte o nový.',back:'Zpět na přihlášení',foot:'Přístup mají jen pozvaní uživatelé.'},
+ en:{title:'Sign in',lead:'Enter your email. We will send you a one-time link, no password needed.',email:'Email',send:'Send sign-in link',
+     sent:'If this address is authorised, a sign-in link is on its way. Check your inbox (and spam). The link is valid for a short time and works once.',
+     wait:'Sending…',err:'Something went wrong. Please try again.',vtitle:'Confirm sign-in',vlead:'Click the button to finish signing in on this browser.',vbtn:'Sign in',
+     bad:'This link is invalid, already used, or expired. Request a new one.',back:'Back to sign-in',foot:'Access is by invitation only.'}};
+let lang = 'cs'; try { const sv = localStorage.getItem('lang'); if (sv === 'cs' || sv === 'en') lang = sv; } catch(e) {}
+const $ = s => document.querySelector(s), H = {'Content-Type':'application/json','X-Requested-With':'sc'};
+function paint(){ document.documentElement.lang = lang; document.querySelectorAll('[data-t]').forEach(e => e.textContent = T[lang][e.dataset.t]);
+  document.querySelectorAll('.lang a').forEach(a => a.classList.toggle('on', a.dataset.l === lang)); }
+document.querySelectorAll('.lang a').forEach(a => a.onclick = () => { lang = a.dataset.l; try { localStorage.setItem('lang', lang); } catch(e) {} paint(); });
+function msg(t, cls){ const m = $('#msg'); m.textContent = t; m.className = 'msg ' + (cls||''); m.style.display = 'block'; }
+paint();
+const token = new URLSearchParams(location.search).get('token');
+if (location.pathname === '/auth/verify') {
+  $('#login').style.display = 'none'; $('#verify').style.display = 'block';
+  history.replaceState(null, '', '/auth/verify');          // keep the one-time token out of the address bar/history
+  $('#vgo').onclick = async () => { $('#vgo').disabled = true;
+    try { const r = await fetch('/auth/verify', {method:'POST', headers:H, body:JSON.stringify({token})});
+      if (r.ok) { location.replace('/'); return; }
+      msg(T[lang].bad, 'err'); $('#vgo').style.display = 'none';
+      const a = document.createElement('a'); a.href = '/login'; a.textContent = T[lang].back; a.style.cssText = 'display:block;margin-top:14px;color:var(--s1)'; $('#verify').appendChild(a);
+    } catch(e) { msg(T[lang].err, 'err'); $('#vgo').disabled = false; } };
+} else {
+  $('#f').onsubmit = async e => { e.preventDefault(); const b = $('#go'); b.disabled = true; b.textContent = T[lang].wait;
+    try { const r = await fetch('/auth/request', {method:'POST', headers:H, body:JSON.stringify({email:$('#email').value})});
+      if (!r.ok) throw 0; msg(T[lang].sent, 'ok'); $('#f').style.display = 'none';
+    } catch(err) { msg(T[lang].err, 'err'); b.disabled = false; b.textContent = T[lang].send; } };
+}
+</script>
+</body>
+</html>

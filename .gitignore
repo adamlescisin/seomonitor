@@ -1,0 +1,10 @@
+config.yaml
+service-account*.json
+*.token
+*.db
+*.db-wal
+*.db-shm
+.venv/
+__pycache__/
+*.pyc
+.DS_Store

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>cz.akpro.seocompass.evening</string>
+  <key>ProgramArguments</key><array><string>/PATH/TO/seo-compass/run.sh</string><string>sync</string></array>
+  <key>StartCalendarInterval</key><dict><key>Hour</key><integer>18</integer><key>Minute</key><integer>20</integer></dict>
+  <key>StandardOutPath</key><string>/tmp/seocompass-evening.log</string>
+  <key>StandardErrorPath</key><string>/tmp/seocompass-evening.log</string>
+</dict></plist>

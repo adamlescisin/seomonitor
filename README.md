@@ -55,7 +55,8 @@ Edit the `/PATH/TO/` in both files in `launchd/`, then:
 ```bash
 cp launchd/*.plist ~/Library/LaunchAgents/
 launchctl load ~/Library/LaunchAgents/cz.akpro.seocompass.server.plist   # dashboard, always on
-launchctl load ~/Library/LaunchAgents/cz.akpro.seocompass.daily.plist    # 06:15 daily sync; Mondays also crawl + ideas
+launchctl load ~/Library/LaunchAgents/cz.akpro.seocompass.daily.plist    # 06:15 sync; Mondays also crawl + ideas
+launchctl load ~/Library/LaunchAgents/cz.akpro.seocompass.evening.plist  # 18:20 sync (second refresh of the day)
 ```
 To open it from other devices, start with `HOST=0.0.0.0`. The app **refuses to bind to anything but localhost unless login is enabled** (see below).
 
